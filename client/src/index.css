@@ -55,3 +55,16 @@ body {
 .input-field::placeholder {
   color: #9CA3AF;
 }
+
+@layer utilities {
+  .bg-mh-light { background-color: #F5F5F5; }
+  .bg-mh-dark { background-color: #000000; }
+  .bg-mh-white { background-color: #FFFFFF; }
+  .bg-mh-green { background-color: #039059; }
+  .text-mh-light { color: #F5F5F5; }
+  .text-mh-dark { color: #000000; }
+  .text-mh-white { color: #FFFFFF; }
+  .text-mh-green { color: #039059; }
+  .border-mh-green { border-color: #039059; }
+  .bg-mh-gradient { background: linear-gradient(135deg, #01321F 0%, #03985E 100%); }
+}

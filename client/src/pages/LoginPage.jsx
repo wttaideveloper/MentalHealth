@@ -14,7 +14,7 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex">
+    <div className="min-h-screen bg-mh-light flex">
       {/* Left Side - Illustration */}
       <div 
         className="hidden lg:flex lg:w-1/2 items-center justify-center p-8 relative"
@@ -38,24 +38,26 @@ function LoginPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-md">
           {/* Back Button */}
-          <button className="flex items-center text-gray-600 mb-8 hover:text-gray-800 transition-colors">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span className="text-sm font-medium">Back</span>
+          <button className="flex justify-center items-center text-gray-600 mb-8 hover:text-gray-800 transition-colors">
+            <div className="w-8 h-8 rounded-full border border-mh-green flex items-center justify-center mr-2">
+              <svg className="w-4 h-4 text-mh-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </div>
+            <span className="text-sm font-medium text-mh-dark">Back</span>
           </button>
 
           {/* Login Form */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2">
+              <h1 className="text-2xl sm:text-3xl font-bold text-mh-dark mb-2">
                 Login or SignUp
               </h1>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-black mb-2">
+                <label className="block text-sm font-medium text-mh-dark mb-2">
                   Mobile number / Email
                 </label>
                 <input
@@ -69,7 +71,7 @@ function LoginPage() {
 
               <button
                 onClick={handleContinue}
-                className="btn-gradient w-full py-4 text-white font-semibold rounded-xl text-base"
+                className="bg-mh-gradient w-full py-4 text-mh-white font-semibold rounded-xl text-base hover:opacity-90 transition-opacity duration-200"
               >
                 Continue
               </button>
@@ -81,14 +83,14 @@ function LoginPage() {
                 <div className="w-full border-t border-gray-200"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-[#F5F5F5] text-gray-500">Or continue with</span>
+                <span className="px-4 bg-mh-light text-mh-dark">Or continue with</span>
               </div>
             </div>
 
             {/* Google Sign In */}
             <button
               onClick={handleGoogleSignIn}
-              className="w-full bg-white border border-gray-200 rounded-xl py-4 px-4 flex items-center justify-center space-x-3 hover:bg-gray-50 transition-colors"
+              className="w-full bg-mh-white border border-gray-200 rounded-xl py-4 px-4 flex items-center justify-center space-x-3 hover:bg-gray-50 transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
