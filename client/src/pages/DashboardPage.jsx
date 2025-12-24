@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
+import { apiHealthCheck } from "../api/healthApi";
 
 function DashboardPage() {
   const [health, setHealth] = useState(null);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_BASE_URL}/health`)
-      .then((res) => res.json())
-      .then((data) => setHealth(data))
+    apiHealthCheck()
+      .then((response) => setHealth(response.data))
       .catch((err) => console.error("API Error:", err));
   }, []);
 

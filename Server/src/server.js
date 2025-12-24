@@ -1,14 +1,18 @@
-require("dotenv").config({ path: "../.env" });
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 const { connectDb } = require("./config/db");
 const { createApp } = require("./app");
 const { cfg } = require("./config/config");
 
 (async function startServer() {
+  console.log("Debug - MONGO_URI:", cfg.MONGO_URI ? "Found" : "Missing");
+  
   try {
     await connectDb(cfg.MONGO_URI);
     console.log("✅ MongoDB connected");
   } catch (err) {
     console.log("⚠️  MongoDB not available, running without database");
+    console.error("MongoDB Error:", err.message);
   }
   
   const app = await createApp();
