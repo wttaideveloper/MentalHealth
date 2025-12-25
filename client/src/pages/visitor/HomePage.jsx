@@ -1,4 +1,8 @@
 import heroImage from '../../assets/images/hero-home.png';
+import f1 from '../../assets/images/f1.png'
+import f2 from '../../assets/images/f2.png'
+import f3 from '../../assets/images/f3.png'
+
 
 function HomePage() {
   return (
@@ -99,16 +103,22 @@ function HomePage() {
 
                 <div className="flex gap-10 mb-6">
                   <div>
-                    <p className="text-sm text-mh-dark font-bold">Duration</p>
+                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-mh-dark font-bold mb-1">Duration</p>
                     <p className="font-medium text-gray-700">10–12 minutes</p>
                   </div>
                   <div>
-                    <p className="text-sm text-mh-dark font-bold">Questions</p>
+                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-mh-dark font-bold mb-1">Questions</p>
                     <p className="font-medium text-gray-700">20 questions</p>
                   </div>
                 </div>
 
-                <button className="px-6 py-2 rounded-full bg-mh-green text-mh-white text-sm font-semibold">
+                <button className="px-6 py-2 rounded-full bg-mh-gradient text-mh-white text-sm">
                   View Details
                 </button>
               </div>
@@ -119,9 +129,9 @@ function HomePage() {
                   Research-Based
                 </span>
                 <img
-                  src="/images/anxiety.jpg"
+                  src={f1}
                   alt="Anxiety assessment"
-                  className="rounded-2xl w-full h-[260px] object-cover"
+                  className="rounded-2xl w-full h-[300px] object-cover"
                 />
               </div>
 
@@ -141,16 +151,22 @@ function HomePage() {
 
                 <div className="flex gap-10 mb-6">
                   <div>
-                    <p className="text-sm text-mh-dark font-bold">Duration</p>
+                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-mh-dark font-bold mb-1">Duration</p>
                     <p className="font-medium text-gray-700">10–12 minutes</p>
                   </div>
                   <div>
-                    <p className="text-sm text-mh-dark font-bold">Questions</p>
+                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-mh-dark font-bold mb-1">Questions</p>
                     <p className="font-medium text-gray-700">20 questions</p>
                   </div>
                 </div>
 
-                <button className="px-6 py-2 rounded-full bg-mh-green text-mh-white text-sm font-semibold">
+                <button className="px-6 py-2 rounded-full bg-mh-gradient text-mh-white text-sm ">
                   View Details
                 </button>
               </div>
@@ -160,9 +176,9 @@ function HomePage() {
                   Research-Based
                 </span>
                 <img
-                  src="/images/depression.jpg"
+                  src={f2}
                   alt="Depression screening"
-                  className="rounded-2xl w-full h-[260px] object-cover"
+                  className="rounded-2xl w-full h-[300px] object-cover"
                 />
               </div>
 
@@ -182,16 +198,22 @@ function HomePage() {
 
                 <div className="flex gap-10 mb-6">
                   <div>
-                    <p className="text-sm text-mh-dark font-bold">Duration</p>
+                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-mh-dark font-bold mb-1">Duration</p>
                     <p className="font-medium text-gray-700">10–12 minutes</p>
                   </div>
                   <div>
-                    <p className="text-sm text-mh-dark font-bold">Questions</p>
+                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm text-mh-dark font-bold mb-1">Questions</p>
                     <p className="font-medium text-gray-700">20 questions</p>
                   </div>
                 </div>
 
-                <button className="px-6 py-2 rounded-full bg-mh-green text-mh-white text-sm font-semibold">
+                <button className="px-6 py-2 rounded-full bg-mh-gradient text-mh-white text-sm">
                   View Details
                 </button>
               </div>
@@ -201,9 +223,9 @@ function HomePage() {
                   Research-Based
                 </span>
                 <img
-                  src="/images/adhd.jpg"
+                  src={f3}
                   alt="ADHD screening"
-                  className="rounded-2xl w-full h-[260px] object-cover"
+                  className="rounded-2xl w-full h-[300px] object-cover"
                 />
               </div>
 
