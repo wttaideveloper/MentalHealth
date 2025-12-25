@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import bgImage from '../assets/images/Rectangle 40026.png';
-import otpImg from '../assets/images/otp-img.png';
+import bgImage from '../../assets/images/Rectangle 40026.png';
+import otpImg from '../../assets/images/otp-img.png';
 
 function OtpPage() {
   const [otp, setOtp] = useState(['', '', '', '']);

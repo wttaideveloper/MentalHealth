@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { apiHealthCheck } from "../api/healthApi";
+import { apiHealthCheck } from "../../api/healthApi";
 
 function DashboardPage() {
   const [health, setHealth] = useState(null);

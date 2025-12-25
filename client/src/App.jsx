@@ -1,13 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import OtpPage from './pages/OtpPage';
-import EnterPassword from './pages/EnterPassword';
-import SignUpPage from './pages/SignUpPage';
-import RegisterPage from './pages/RegisterPage';
+import LoginPage from './pages/auth/LoginPage';
+import OtpPage from './pages/auth/OtpPage';
+import EnterPassword from './pages/auth/EnterPassword';
+import SignUpPage from './pages/auth/SignUpPage';
+import RegisterPage from './pages/auth/RegisterPage';
 import ConsentPage from './pages/ConsentPage';
-import DashboardPage from './pages/DashboardPage';
-import AssessmentIntroPage from './pages/AssessmentIntroPage';
-import AssessmentPage from './pages/AssessmentPage';
+import DashboardPage from './pages/dashboard/DashboardPage';
+import AssessmentIntroPage from './pages/assessment/AssessmentIntroPage';
+import AssessmentPage from './pages/assessment/AssessmentPage';
 import ResultPage from './pages/ResultPage';
 import NotFoundPage from './pages/NotFoundPage';
 

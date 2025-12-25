@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import bgImage from '../assets/images/Rectangle 40026.png';
-// import loginImg from '../assets/images/login-img.png';
-import otpImg from '../assets/images/otp-img.png';
+import bgImage from '../../assets/images/Rectangle 40026.png';
+// import loginImg from '../../assets/images/login-img.png';
+import otpImg from '../../assets/images/otp-img.png';
 
 function EnterPassword() {
   const [password, setPassword] = useState('');
