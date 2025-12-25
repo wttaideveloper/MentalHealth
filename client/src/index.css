@@ -67,4 +67,6 @@ body {
   .text-mh-green { color: #039059; }
   .border-mh-green { border-color: #039059; }
   .bg-mh-gradient { background: linear-gradient(135deg, #01321F 0%, #03985E 100%); }
+  .bg-mh-gradient-footer { background: linear-gradient(135deg, #167651 0%, #01321F 100%); }
+
 }
