@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import logo from '../assets/images/logo.png';
+import profileImage from '../assets/images/profile.png';
+
+// Mock user data - replace with actual user context/state
+const mockUser = {
+  firstName: 'John',
+  lastName: 'David',
+  avatar: profileImage
+};
 
 function Header({ isLoggedIn = false }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -19,21 +27,18 @@ function Header({ isLoggedIn = false }) {
           {/* Right Side - Navigation + Auth */}
           <div className="flex items-center space-x-8">
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center space-x-6" style={{fontFamily: 'Manrope', fontWeight: 500, fontSize: '14px', lineHeight: '160%', letterSpacing: '0%'}}>
+            <nav className="hidden md:flex items-center space-x-8" style={{fontFamily: 'Manrope', fontWeight: 500, fontSize: '14px', lineHeight: '160%', letterSpacing: '0%'}}>
               {isLoggedIn ? (
                 // User Navigation
                 <>
                   <Link to="/user-home" className="text-mh-dark hover:text-mh-green font-medium transition-colors">
-                    Home
+                    Services
+                  </Link>
+                  <Link to="/assessments" className="text-mh-dark hover:text-mh-green font-medium transition-colors">
+                    All Assessments
                   </Link>
                   <Link to="/my-assessments" className="text-mh-dark hover:text-mh-green font-medium transition-colors">
                     My Assessments
-                  </Link>
-                  <Link to="/about" className="text-mh-dark hover:text-mh-green font-medium transition-colors">
-                    About Us
-                  </Link>
-                  <Link to="/testimonials" className="text-mh-dark hover:text-mh-green font-medium transition-colors">
-                    Testimonials
                   </Link>
                   <Link to="/contact" className="text-mh-dark hover:text-mh-green font-medium transition-colors">
                     Contact Us
@@ -61,12 +66,28 @@ function Header({ isLoggedIn = false }) {
               )}
             </nav>
 
-            {/* Auth Buttons */}
+            {/* Auth Buttons / User Profile */}
             <div className="hidden md:flex items-center" style={{fontFamily: 'Manrope', fontWeight: 500, fontSize: '14px', lineHeight: '160%', letterSpacing: '0%'}}>
               {isLoggedIn ? (
-                <button className="bg-mh-gradient text-mh-white px-6 py-2 rounded-full font-medium transition-colors" style={{fontSize: '14px'}}>
-                  Logout
-                </button>
+                <div className="flex items-center bg-[#E8F1EE] rounded-full px-4 py-2 space-x-3">
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500 font-normal">
+                      Welcome
+                    </div>
+                    <div className="text-sm text-mh-dark font-semibold">
+                      {mockUser.firstName} {mockUser.lastName}
+                    </div>
+                  </div>
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
+                    {mockUser.avatar ? (
+                      <img src={mockUser.avatar} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-mh-gradient flex items-center justify-center text-white text-sm font-semibold">
+                        {mockUser.firstName.charAt(0)}{mockUser.lastName.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : (
                 <Link 
                   to="/login" 
@@ -108,7 +129,14 @@ function Header({ isLoggedIn = false }) {
                     className="block px-3 py-2 text-mh-dark hover:text-mh-green font-medium"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Home
+                    Services
+                  </Link>
+                  <Link
+                    to="/assessments"
+                    className="block px-3 py-2 text-mh-dark hover:text-mh-green font-medium"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    All Assessments
                   </Link>
                   <Link
                     to="/my-assessments"
@@ -116,20 +144,6 @@ function Header({ isLoggedIn = false }) {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     My Assessments
-                  </Link>
-                  <Link
-                    to="/about"
-                    className="block px-3 py-2 text-mh-dark hover:text-mh-green font-medium"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    About Us
-                  </Link>
-                  <Link
-                    to="/testimonials"
-                    className="block px-3 py-2 text-mh-dark hover:text-mh-green font-medium"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Testimonials
                   </Link>
                   <Link
                     to="/contact"
@@ -150,7 +164,7 @@ function Header({ isLoggedIn = false }) {
                     className="block px-3 py-2 text-mh-dark hover:text-mh-green font-medium"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Services
+                    Home
                   </Link>
                   <Link
                     to="/about"
