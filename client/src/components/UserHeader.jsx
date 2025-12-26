@@ -25,7 +25,7 @@ function UserHeader() {
           <div className="flex items-center space-x-8">
             <nav className="hidden md:flex items-center space-x-8" style={{fontFamily: 'Manrope', fontWeight: 500, fontSize: '14px', lineHeight: '160%', letterSpacing: '0%'}}>
               <Link to="/user-home" className="text-mh-dark hover:text-mh-green font-medium transition-colors">
-                Services
+                Home
               </Link>
               <Link to="/user/assessments" className="text-mh-dark hover:text-mh-green font-medium transition-colors">
                 All Assessments
@@ -81,7 +81,7 @@ function UserHeader() {
           <div className="md:hidden border-t border-gray-100">
             <div className="px-2 pt-2 pb-3 space-y-1">
               <Link to="/user-home" className="block px-3 py-2 text-mh-dark hover:text-mh-green font-medium" onClick={() => setIsMobileMenuOpen(false)}>
-                Services
+                Home
               </Link>
               <Link to="/user/assessments" className="block px-3 py-2 text-mh-dark hover:text-mh-green font-medium" onClick={() => setIsMobileMenuOpen(false)}>
                 All Assessments
