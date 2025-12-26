@@ -2,10 +2,12 @@ import f1 from '../../assets/images/f1.png';
 import f2 from '../../assets/images/f2.png';
 import f3 from '../../assets/images/f3.png';
 import { Search, Filter, Star } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 function AllAssessmentsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isUserContext = location.pathname.startsWith('/user');
   
   const assessments = [
     { img: f1, id: 1 },
@@ -15,6 +17,11 @@ function AllAssessmentsPage() {
     { img: f3, id: 5 },
     { img: f1, id: 6 },
   ];
+
+  const handleAssessmentClick = (id) => {
+    const route = isUserContext ? `/user/assessment-detail/${id}` : `/assessment-detail/${id}`;
+    navigate(route);
+  };
 
   return (
     <section className="bg-mh-white py-12 sm:py-16 lg:py-20">
@@ -55,7 +62,7 @@ function AllAssessmentsPage() {
           {assessments.map((item, index) => (
             <div
               key={index}
-              onClick={() => navigate(`/assessment-detail/${item.id}`)}
+              onClick={() => handleAssessmentClick(item.id)}
               className="bg-mh-light rounded-xl sm:rounded-2xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-300 cursor-pointer"
             >
               {/* Image */}

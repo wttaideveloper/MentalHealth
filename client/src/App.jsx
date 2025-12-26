@@ -46,6 +46,7 @@ function App() {
         {/* User Routes */}
         <Route path="/user-home" element={<Layout isLoggedIn={true}><UserHomePage /></Layout>} />
         <Route path="/user/assessments" element={<Layout isLoggedIn={true}><AllAssessmentsPage /></Layout>} />
+        <Route path="/user/assessment-detail/:id" element={<Layout isLoggedIn={true}><AssessmentDetailPage /></Layout>} />
         <Route path="/user/about" element={<Layout isLoggedIn={true}><AboutUsPage /></Layout>} />
         <Route path="/user/contact" element={<Layout isLoggedIn={true}><ContactUsPage /></Layout>} />
         <Route path="/my-assessments" element={<Layout isLoggedIn={true}><MyAssessmentsPage /></Layout>} />
