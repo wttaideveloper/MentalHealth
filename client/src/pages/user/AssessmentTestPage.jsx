@@ -3,14 +3,16 @@ import { useNavigate } from 'react-router-dom';
 
 function AssessmentTestPage() {
   const navigate = useNavigate();
-  const [answers, setAnswers] = useState({});
+  const [answers, setAnswers] = useState({
+    q17: 'yes-definite' // Set default selected value
+  });
 
   const handleAnswerChange = (questionId, value) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 px-16 py-6">
+    <div className="min-h-screen bg-gray-50 px-60 py-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center text-sm text-gray-600">
@@ -54,36 +56,36 @@ function AssessmentTestPage() {
             15. I am easily distracted, I find it hard to concentrate
           </h3>
           <div className="flex gap-8">
-            <label className="flex items-center cursor-pointer">
-              <input 
-                type="radio" 
-                name="q15" 
-                value="not-true"
-                onChange={(e) => handleAnswerChange(15, e.target.value)}
-                className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-              />
-              <span className="ml-2 text-gray-700">Not True</span>
-            </label>
-            <label className="flex items-center cursor-pointer">
-              <input 
-                type="radio" 
-                name="q15" 
-                value="somewhat-true"
-                onChange={(e) => handleAnswerChange(15, e.target.value)}
-                className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-              />
-              <span className="ml-2 text-gray-700">Somewhat True</span>
-            </label>
-            <label className="flex items-center cursor-pointer">
-              <input 
-                type="radio" 
-                name="q15" 
-                value="certainly-true"
-                onChange={(e) => handleAnswerChange(15, e.target.value)}
-                className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-              />
-              <span className="ml-2 text-gray-700">Certainly True</span>
-            </label>
+            {[
+              { value: 'not-true', label: 'Not True' },
+              { value: 'somewhat-true', label: 'Somewhat True' },
+              { value: 'certainly-true', label: 'Certainly True' }
+            ].map((option) => (
+              <label key={option.value} className="flex items-center cursor-pointer">
+                <div className="relative">
+                  <input 
+                    type="radio" 
+                    name="q15" 
+                    value={option.value}
+                    checked={answers.q15 === option.value}
+                    onChange={(e) => setAnswers(prev => ({ ...prev, q15: e.target.value }))}
+                    className="sr-only"
+                  />
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    answers.q15 === option.value 
+                      ? 'bg-mh-green border-mh-green' 
+                      : 'border-gray-300'
+                  }`}>
+                    {answers.q15 === option.value && (
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="ml-3 text-gray-700">{option.label}</span>
+              </label>
+            ))}
           </div>
         </div>
 
@@ -93,43 +95,37 @@ function AssessmentTestPage() {
             17. Overall, do you think that your child has difficulties in one or more of the following areas: emotions, concentration, behaviour or being able to get on with other people?
           </h3>
           <div className="flex gap-8 mb-6">
-            <label className="flex items-center cursor-pointer">
-              <input 
-                type="radio" 
-                name="q17" 
-                value="no"
-                className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-              />
-              <span className="ml-2 text-gray-700">No</span>
-            </label>
-            <label className="flex items-center cursor-pointer">
-              <input 
-                type="radio" 
-                name="q17" 
-                value="yes-minor"
-                className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-              />
-              <span className="ml-2 text-gray-700">Yes minor difficulties</span>
-            </label>
-            <label className="flex items-center cursor-pointer">
-              <input 
-                type="radio" 
-                name="q17" 
-                value="yes-definite"
-                defaultChecked
-                className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-              />
-              <span className="ml-2 text-gray-700">Yes definite difficulties</span>
-            </label>
-            <label className="flex items-center cursor-pointer">
-              <input 
-                type="radio" 
-                name="q17" 
-                value="yes-severe"
-                className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-              />
-              <span className="ml-2 text-gray-700">Yes severe difficulties</span>
-            </label>
+            {[
+              { value: 'no', label: 'No' },
+              { value: 'yes-minor', label: 'Yes minor difficulties' },
+              { value: 'yes-definite', label: 'Yes definite difficulties' },
+              { value: 'yes-severe', label: 'Yes severe difficulties' }
+            ].map((option) => (
+              <label key={option.value} className="flex items-center cursor-pointer">
+                <div className="relative">
+                  <input 
+                    type="radio" 
+                    name="q17" 
+                    value={option.value}
+                    checked={answers.q17 === option.value}
+                    onChange={(e) => setAnswers(prev => ({ ...prev, q17: e.target.value }))}
+                    className="sr-only"
+                  />
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    answers.q17 === option.value 
+                      ? 'bg-mh-green border-mh-green' 
+                      : 'border-gray-300'
+                  }`}>
+                    {answers.q17 === option.value && (
+                      <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className="ml-3 text-gray-700">{option.label}</span>
+              </label>
+            ))}
           </div>
 
           {/* Sub-questions in gray background */}
@@ -138,44 +134,74 @@ function AssessmentTestPage() {
               • How long have these difficulties been present?
             </h4>
             <div className="flex gap-8 mb-6">
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="duration" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">Less than a month</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="duration" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">1-5 months</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="duration" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">6-12 months</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="duration" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">Over a year</span>
-              </label>
+              {[
+                { value: 'less-month', label: 'Less than a month' },
+                { value: '1-5-months', label: '1-5 months' },
+                { value: '6-12-months', label: '6-12 months' },
+                { value: 'over-year', label: 'Over a year' }
+              ].map((option) => (
+                <label key={option.value} className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input 
+                      type="radio" 
+                      name="duration" 
+                      value={option.value}
+                      checked={answers.duration === option.value}
+                      onChange={(e) => setAnswers(prev => ({ ...prev, duration: e.target.value }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      answers.duration === option.value 
+                        ? 'bg-mh-green border-mh-green' 
+                        : 'border-gray-300'
+                    }`}>
+                      {answers.duration === option.value && (
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="ml-3 text-gray-700">{option.label}</span>
+                </label>
+              ))}
             </div>
 
             <h4 className="text-base font-medium text-gray-900 mb-4">
               • Do the difficulties upset or distress your child?
             </h4>
             <div className="flex gap-8 mb-6">
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="distress" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">Not at all</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="distress" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">Only a little</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="distress" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">Quite a lot</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="distress" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">A great deal</span>
-              </label>
+              {[
+                { value: 'not-at-all', label: 'Not at all' },
+                { value: 'only-little', label: 'Only a little' },
+                { value: 'quite-lot', label: 'Quite a lot' },
+                { value: 'great-deal', label: 'A great deal' }
+              ].map((option) => (
+                <label key={option.value} className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input 
+                      type="radio" 
+                      name="distress" 
+                      value={option.value}
+                      checked={answers.distress === option.value}
+                      onChange={(e) => setAnswers(prev => ({ ...prev, distress: e.target.value }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      answers.distress === option.value 
+                        ? 'bg-mh-green border-mh-green' 
+                        : 'border-gray-300'
+                    }`}>
+                      {answers.distress === option.value && (
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="ml-3 text-gray-700">{option.label}</span>
+                </label>
+              ))}
             </div>
 
             <h4 className="text-base font-medium text-gray-900 mb-4">
@@ -192,22 +218,37 @@ function AssessmentTestPage() {
                 <div key={index} className="flex items-center">
                   <span className="text-gray-700 w-40">{area}</span>
                   <div className="flex gap-8">
-                    <label className="flex items-center cursor-pointer">
-                      <input type="radio" name={`area-${index}`} className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                      <span className="ml-2 text-gray-700">Not at all</span>
-                    </label>
-                    <label className="flex items-center cursor-pointer">
-                      <input type="radio" name={`area-${index}`} className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                      <span className="ml-2 text-gray-700">Only a little</span>
-                    </label>
-                    <label className="flex items-center cursor-pointer">
-                      <input type="radio" name={`area-${index}`} className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                      <span className="ml-2 text-gray-700">Quite a lot</span>
-                    </label>
-                    <label className="flex items-center cursor-pointer">
-                      <input type="radio" name={`area-${index}`} className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                      <span className="ml-2 text-gray-700">A great deal</span>
-                    </label>
+                    {[
+                      { value: 'not-at-all', label: 'Not at all' },
+                      { value: 'only-little', label: 'Only a little' },
+                      { value: 'quite-lot', label: 'Quite a lot' },
+                      { value: 'great-deal', label: 'A great deal' }
+                    ].map((option) => (
+                      <label key={option.value} className="flex items-center cursor-pointer">
+                        <div className="relative">
+                          <input 
+                            type="radio" 
+                            name={`area-${index}`} 
+                            value={option.value}
+                            checked={answers[`area-${index}`] === option.value}
+                            onChange={(e) => setAnswers(prev => ({ ...prev, [`area-${index}`]: e.target.value }))}
+                            className="sr-only"
+                          />
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                            answers[`area-${index}`] === option.value 
+                              ? 'bg-mh-green border-mh-green' 
+                              : 'border-gray-300'
+                          }`}>
+                            {answers[`area-${index}`] === option.value && (
+                              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        </div>
+                        <span className="ml-3 text-gray-700">{option.label}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -217,22 +258,37 @@ function AssessmentTestPage() {
               • Do the difficulties put a burden on you or the family as a whole?
             </h4>
             <div className="flex gap-8">
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="burden" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">Not at all</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="burden" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">Only a little</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="burden" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">Quite a lot</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input type="radio" name="burden" className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green" />
-                <span className="ml-2 text-gray-700">A great deal</span>
-              </label>
+              {[
+                { value: 'not-at-all', label: 'Not at all' },
+                { value: 'only-little', label: 'Only a little' },
+                { value: 'quite-lot', label: 'Quite a lot' },
+                { value: 'great-deal', label: 'A great deal' }
+              ].map((option) => (
+                <label key={option.value} className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input 
+                      type="radio" 
+                      name="burden" 
+                      value={option.value}
+                      checked={answers.burden === option.value}
+                      onChange={(e) => setAnswers(prev => ({ ...prev, burden: e.target.value }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      answers.burden === option.value 
+                        ? 'bg-mh-green border-mh-green' 
+                        : 'border-gray-300'
+                    }`}>
+                      {answers.burden === option.value && (
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="ml-3 text-gray-700">{option.label}</span>
+                </label>
+              ))}
             </div>
           </div>
         </div>
@@ -248,33 +304,36 @@ function AssessmentTestPage() {
               {question.num}. {question.text}
             </h3>
             <div className="flex gap-8">
-              <label className="flex items-center cursor-pointer">
-                <input 
-                  type="radio" 
-                  name={`q${question.num}`} 
-                  value="not-true"
-                  className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-                />
-                <span className="ml-2 text-gray-700">Not True</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input 
-                  type="radio" 
-                  name={`q${question.num}`} 
-                  value="somewhat-true"
-                  className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-                />
-                <span className="ml-2 text-gray-700">Somewhat True</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input 
-                  type="radio" 
-                  name={`q${question.num}`} 
-                  value="certainly-true"
-                  className="w-4 h-4 text-mh-green border-gray-300 focus:ring-mh-green"
-                />
-                <span className="ml-2 text-gray-700">Certainly True</span>
-              </label>
+              {[
+                { value: 'not-true', label: 'Not True' },
+                { value: 'somewhat-true', label: 'Somewhat True' },
+                { value: 'certainly-true', label: 'Certainly True' }
+              ].map((option) => (
+                <label key={option.value} className="flex items-center cursor-pointer">
+                  <div className="relative">
+                    <input 
+                      type="radio" 
+                      name={`q${question.num}`} 
+                      value={option.value}
+                      checked={answers[`q${question.num}`] === option.value}
+                      onChange={(e) => setAnswers(prev => ({ ...prev, [`q${question.num}`]: e.target.value }))}
+                      className="sr-only"
+                    />
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                      answers[`q${question.num}`] === option.value 
+                        ? 'bg-mh-green border-mh-green' 
+                        : 'border-gray-300'
+                    }`}>
+                      {answers[`q${question.num}`] === option.value && (
+                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="ml-3 text-gray-700">{option.label}</span>
+                </label>
+              ))}
             </div>
           </div>
         ))}
