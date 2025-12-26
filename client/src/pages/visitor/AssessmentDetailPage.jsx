@@ -30,7 +30,7 @@ function AssessmentDetailPage() {
       <div className="bg-[#D5DCEE] py-12">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            
+
             {/* Image */}
             <div>
               <img
@@ -66,12 +66,19 @@ function AssessmentDetailPage() {
               {/* Meta Info */}
               <div className="bg-white rounded-xl p-4 inline-flex gap-8">
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Duration</p>
-                  <p className="font-semibold text-gray-900">10-12 minutes</p>
+                  <svg className="w-4 h-4 text-mh-green mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+
+                  <p className="text-sm text-gray-800 font-semibold mb-1">Duration</p>
+                  <p className=" text-gray-500">10-12 minutes</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 mb-1">Questions</p>
-                  <p className="font-semibold text-gray-900">20 Questions</p>
+                  <svg className="w-4 h-4 text-mh-green mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-gray-800 font-semibold mb-1">Questions</p>
+                  <p className=" text-gray-500">20 Questions</p>
                 </div>
               </div>
             </div>
@@ -129,11 +136,10 @@ function AssessmentDetailPage() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`pb-3 font-medium transition-colors ${
-                    activeTab === tab.key
-                        ? 'border-b-2 border-mh-green text-mh-green'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className={`pb-3 font-medium transition-colors ${activeTab === tab.key
+                    ? 'border-b-2 border-mh-green text-mh-green'
+                    : 'text-gray-500 hover:text-gray-700'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -188,7 +194,7 @@ function AssessmentDetailPage() {
             {activeTab === 'reviews' && (
               <div>
                 <h3 className="text-lg font-semibold mb-6 text-gray-900">Reviews</h3>
-                
+
                 {/* Rating Summary */}
                 <div className="flex items-center gap-6 mb-8">
                   <div className="flex items-center gap-2">
@@ -196,15 +202,15 @@ function AssessmentDetailPage() {
                     <span className="text-2xl font-bold text-mh-green">4.9</span>
                   </div>
                   <span className="text-sm text-gray-500">190 Reviews</span>
-                  
+
                   {/* Rating Bars */}
                   <div className="flex-1 max-w-xs">
                     {[5, 4, 3, 2, 1].map(rating => (
                       <div key={rating} className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-gray-500 w-3">{rating}</span>
                         <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-mh-green rounded-full" 
+                          <div
+                            className="h-full bg-mh-green rounded-full"
                             style={{ width: rating === 5 ? '80%' : rating === 4 ? '15%' : '5%' }}
                           ></div>
                         </div>
@@ -234,13 +240,13 @@ function AssessmentDetailPage() {
                         </div>
                         <span className="text-xs text-gray-400">{review.date}</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-1 mb-3">
-                        {[1,2,3,4,5].map(star => (
+                        {[1, 2, 3, 4, 5].map(star => (
                           <Star key={star} className="w-4 h-4 fill-mh-green text-mh-green" />
                         ))}
                       </div>
-                      
+
                       <p className="text-sm text-gray-600 leading-relaxed">
                         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros elementum tristique. Duis cursus, mi quis viverra ornare, eros dolor interdum nulla, ut commodo diam libero vitae erat.
                       </p>
@@ -265,7 +271,7 @@ function AssessmentDetailPage() {
               <span className="text-xs text-gray-500">(inclusive of all taxes)</span>
             </div>
           </div>
-              <button className="px-8 py-3 rounded-full bg-mh-gradient text-white font-semibold hover:bg-mh-green transition-colors">
+          <button className="px-8 py-3 rounded-full bg-mh-gradient text-white font-semibold hover:bg-mh-green transition-colors">
             Buy Now
           </button>
         </div>
