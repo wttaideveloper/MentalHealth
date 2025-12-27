@@ -14,7 +14,9 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user" },
 
     isEmailVerified: { type: Boolean, default: false },
-    emailVerifyTokenHash: { type: String, default: "" },
+    emailVerifyTokenHash: { type: String, default: "" }, // Keep for backward compatibility
+    emailVerificationCode: { type: String, default: "" }, // Hashed 6-digit code
+    emailVerificationCodeExpiresAt: { type: Date, default: null }, // Code expiration (10 minutes)
 
     resetPasswordTokenHash: { type: String, default: "" },
     resetPasswordExpiresAt: { type: Date, default: null },

@@ -20,8 +20,11 @@ exports.signup = asyncHandler(async (req, res) => {
   if (existingUser) return res.status(409).json({ success: false, message: "Email already registered" });
 
   const passwordHashValue = await bcrypt.hash(password, 10);
-  const verifyTokenRaw = crypto.randomBytes(32).toString("hex");
-  const verifyTokenHash = hashRaw(verifyTokenRaw);
+  
+  // Generate 6-digit verification code
+  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
+  const codeHash = hashRaw(verificationCode);
+  const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
   const newUser = await User.create({
     email: email.toLowerCase(),
@@ -29,21 +32,20 @@ exports.signup = asyncHandler(async (req, res) => {
     firstName,
     lastName,
     isEmailVerified: false,
-    emailVerifyTokenHash: verifyTokenHash
+    emailVerificationCode: codeHash,
+    emailVerificationCodeExpiresAt: codeExpiresAt
   });
 
-  const verifyUrl = `${cfg.APP_BASE_URL}/verify-email?email=${encodeURIComponent(email)}&token=${verifyTokenRaw}`;
-  
-  // Try to send verification email, but don't fail signup if it fails
+  // Try to send verification email with code, but don't fail signup if it fails
   try {
-    await sendVerifyEmail(email.toLowerCase(), verifyUrl);
+    await sendVerifyEmail(email.toLowerCase(), verificationCode);
   } catch (emailError) {
     // Log error but don't fail the signup
     console.error("⚠️  Failed to send verification email:", emailError.message);
-    console.log("📧 Verification URL (for development):", verifyUrl);
-    // In development, log the URL so user can manually verify
+    // In development, log the code so user can manually verify
     if (cfg.NODE_ENV === "development") {
-      console.log(`\n🔗 Manual verification link:\n${verifyUrl}\n`);
+      console.log(`\n📧 Verification Code (for development): ${verificationCode}\n`);
+      console.log(`Code expires at: ${codeExpiresAt}\n`);
     }
   }
 
@@ -53,22 +55,71 @@ exports.signup = asyncHandler(async (req, res) => {
 });
 
 exports.verifyEmail = asyncHandler(async (req, res) => {
-  const { email, token } = req.body;
+  const { email, code } = req.body;
   const userDoc = await User.findOne({ email: email.toLowerCase() });
   if (!userDoc) return res.status(404).json({ success: false, message: "User not found" });
 
-  const tokenHash = hashRaw(token);
-  if (tokenHash !== userDoc.emailVerifyTokenHash) {
-    return res.status(400).json({ success: false, message: "Invalid verify token" });
+  // Check if code exists and is not expired
+  if (!userDoc.emailVerificationCode) {
+    return res.status(400).json({ success: false, message: "Verification code not found. Please request a new code." });
   }
 
+  if (!userDoc.emailVerificationCodeExpiresAt || userDoc.emailVerificationCodeExpiresAt < new Date()) {
+    return res.status(400).json({ success: false, message: "Verification code expired. Please request a new code." });
+  }
+
+  // Verify the code
+  const codeHash = hashRaw(code);
+  if (codeHash !== userDoc.emailVerificationCode) {
+    return res.status(400).json({ success: false, message: "Invalid verification code" });
+  }
+
+  // Code is valid, verify email
   userDoc.isEmailVerified = true;
-  userDoc.emailVerifyTokenHash = "";
+  userDoc.emailVerificationCode = "";
+  userDoc.emailVerificationCodeExpiresAt = null;
+  userDoc.emailVerifyTokenHash = ""; // Clear old token if exists
   await userDoc.save();
 
   await writeAudit({ userId: userDoc._id, action: "EMAIL_VERIFIED", resourceType: "user", resourceId: String(userDoc._id), req });
 
   return ok(res, "Email verified", null);
+});
+
+exports.resendVerificationCode = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const userDoc = await User.findOne({ email: email.toLowerCase() });
+  
+  if (!userDoc) {
+    // Don't reveal if user exists or not
+    return ok(res, "If user exists and email is not verified, verification code will be sent", null);
+  }
+
+  if (userDoc.isEmailVerified) {
+    return res.status(400).json({ success: false, message: "Email already verified" });
+  }
+
+  // Generate new 6-digit verification code
+  const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const codeHash = hashRaw(verificationCode);
+  const codeExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  userDoc.emailVerificationCode = codeHash;
+  userDoc.emailVerificationCodeExpiresAt = codeExpiresAt;
+  await userDoc.save();
+
+  // Try to send verification email with code
+  try {
+    await sendVerifyEmail(email.toLowerCase(), verificationCode);
+  } catch (emailError) {
+    console.error("⚠️  Failed to send verification email:", emailError.message);
+    if (cfg.NODE_ENV === "development") {
+      console.log(`\n📧 Verification Code (for development): ${verificationCode}\n`);
+    }
+    // Don't fail the request, code is stored and can be used
+  }
+
+  return ok(res, "If user exists and email is not verified, verification code will be sent", null);
 });
 
 exports.login = asyncHandler(async (req, res) => {

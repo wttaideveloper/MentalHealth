@@ -19,15 +19,27 @@ export const signup = async (email, password, firstName, lastName) => {
 };
 
 /**
- * Verify user email with token
+ * Verify user email with 6-digit code
  * @param {string} email - User email
- * @param {string} token - Verification token from email
+ * @param {string} code - 6-digit verification code from email
  * @returns {Promise} API response
  */
-export const verifyEmail = async (email, token) => {
+export const verifyEmail = async (email, code) => {
   const response = await axiosInstance.post('/auth/verify-email', {
     email,
-    token
+    code
+  });
+  return response.data;
+};
+
+/**
+ * Resend verification code to user email
+ * @param {string} email - User email
+ * @returns {Promise} API response
+ */
+export const resendVerificationCode = async (email) => {
+  const response = await axiosInstance.post('/auth/resend-verification-code', {
+    email
   });
   return response.data;
 };

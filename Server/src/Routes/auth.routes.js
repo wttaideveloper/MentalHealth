@@ -17,7 +17,7 @@ router.post(
 
 router.post(
   "/verify-email",
-  validateBody(Joi.object({ email: Joi.string().email().required(), token: Joi.string().required() })),
+  validateBody(Joi.object({ email: Joi.string().email().required(), code: Joi.string().length(6).pattern(/^\d+$/).required() })),
   authController.verifyEmail
 );
 
@@ -37,6 +37,12 @@ router.post(
   "/logout",
   validateBody(Joi.object({ refreshToken: Joi.string().required() })),
   authController.logout
+);
+
+router.post(
+  "/resend-verification-code",
+  validateBody(Joi.object({ email: Joi.string().email().required() })),
+  authController.resendVerificationCode
 );
 
 router.post(

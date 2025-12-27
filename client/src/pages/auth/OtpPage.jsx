@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import bgImage from '../../assets/images/Rectangle 40026.png';
 import otpImg from '../../assets/images/otp-img.png';
-import { verifyEmail, login } from '../../api/authApi';
-import { setTokens } from '../../utils/auth';
+import { verifyEmail, resendVerificationCode } from '../../api/authApi';
 
 function OtpPage() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']); // Changed to 6 digits to match typical email verification tokens
@@ -16,34 +15,9 @@ function OtpPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  const handleAutoVerify = async (emailToVerify, token) => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const response = await verifyEmail(emailToVerify, token);
-      
-      if (response.success) {
-        navigate('/login', { 
-          state: { 
-            message: 'Email verified successfully! Please login.' 
-          } 
-        });
-      } else {
-        setError(response.message || 'Verification failed. Please try again.');
-      }
-    } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Verification failed. Please check the link and try again.';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    // Get email and token from URL params (from email verification link) or navigation state
+    // Get email from URL params or navigation state
     const emailFromUrl = searchParams.get('email');
-    const tokenFromUrl = searchParams.get('token');
     const emailFromState = location.state?.email;
     const isSignUpFromState = location.state?.isSignUp;
     
@@ -56,12 +30,6 @@ function OtpPage() {
     if (isSignUpFromState) {
       setIsSignUp(true);
     }
-
-    // If token is in URL (from email link), auto-verify
-    if (tokenFromUrl && emailFromUrl) {
-      handleAutoVerify(emailFromUrl, tokenFromUrl);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location, searchParams]);
 
   const handleOtpChange = (index, value) => {
@@ -90,28 +58,39 @@ function OtpPage() {
   };
 
   const handleVerify = async () => {
-    // Check if token is in URL (from email link click)
-    const tokenFromUrl = searchParams.get('token');
+    const otpValue = otp.join('');
     
-    if (tokenFromUrl) {
-      // Token from URL - use it directly
-      if (!email) {
-        setError('Email is required');
-        return;
-      }
-      await handleAutoVerify(email, tokenFromUrl);
+    if (otpValue.length !== 6) {
+      setError('Please enter the complete 6-digit code');
       return;
     }
 
-    // Manual token entry (for cases where user needs to enter token manually)
-    // Note: Backend uses long hex tokens (64 chars), not 6-digit codes
-    // This is a fallback for manual entry
     if (!email) {
       setError('Email is required');
       return;
     }
 
-    setError('Please use the verification link from your email. If you don\'t have the link, please request a new verification email.');
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await verifyEmail(email, otpValue);
+      
+      if (response.success) {
+        navigate('/login', { 
+          state: { 
+            message: 'Email verified successfully! Please login.' 
+          } 
+        });
+      } else {
+        setError(response.message || 'Verification failed. Please try again.');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Verification failed. Please check the code and try again.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -122,8 +101,33 @@ function OtpPage() {
     navigate('/password');
   };
 
-  const handleResend = () => {
-    console.log('Resend OTP');
+  const handleResend = async () => {
+    if (!email) {
+      setError('Email is required');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await resendVerificationCode(email);
+      
+      if (response.success) {
+        // Clear OTP inputs
+        setOtp(['', '', '', '', '', '']);
+        setError('');
+        // Show success message (you can add a toast notification here)
+        alert('Verification code has been sent to your email.');
+      } else {
+        setError(response.message || 'Failed to resend code. Please try again.');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Failed to resend code. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
