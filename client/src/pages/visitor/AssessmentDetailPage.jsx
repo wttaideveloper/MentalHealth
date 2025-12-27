@@ -1,11 +1,15 @@
 import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import f1 from '../../assets/images/f1.png';
 import f2 from '../../assets/images/f2.png';
 import { Star } from 'lucide-react';
+import Breadcrumb from '../../components/Breadcrumb';
 
 function AssessmentDetailPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [activeFaq, setActiveFaq] = useState(0);
+  const location = useLocation();
+  const isLoggedIn = location.pathname.startsWith('/user');
 
   const faqs = [
     {
@@ -20,11 +24,7 @@ function AssessmentDetailPage() {
   return (
     <div className="bg-white min-h-screen">
       {/* Breadcrumb */}
-      <div className="max-w-7xl mx-auto px-6 pt-6">
-        <p className="text-sm text-gray-500 mb-6">
-          Home / All Assessments / Anxiety Assessment
-        </p>
-      </div>
+      <Breadcrumb isLoggedIn={isLoggedIn} assessmentName="Anxiety Assessment" />
 
       {/* TOP SECTION - Purple Background */}
       <div className="bg-[#D5DCEE] py-12">

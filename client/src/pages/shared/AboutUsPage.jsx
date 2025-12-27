@@ -1,19 +1,24 @@
+import { useLocation } from 'react-router-dom';
 import about1 from '../../assets/images/about1.png';
 import about2 from '../../assets/images/about2.png';
 import about3 from '../../assets/images/about3.png';
 import { Mountain, Eye, Heart, Sparkles, Shield, Brain, Globe } from 'lucide-react';
+import Breadcrumb from '../../components/Breadcrumb';
 
 function AboutUsPage() {
+  const location = useLocation();
+  const isLoggedIn = location.pathname.startsWith('/user');
+  
   return (
     <div className="bg-mh-white">
+      {/* Breadcrumb */}
+      <div className="bg-mh-gradient pt-6">
+        <Breadcrumb isLoggedIn={isLoggedIn} variant="light" />
+      </div>
 
       {/* HERO SECTION */}
       <section className="bg-mh-gradient py-12 sm:py-16 md:py-20 lg:py-24 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center text-mh-white">
-
-          <p className="text-xs sm:text-sm opacity-80 mb-3 sm:mb-4">
-            Home / About Us
-          </p>
 
           <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-semibold mb-4 sm:mb-6 leading-tight">
             Helping You Understand Your Mind, <br className="hidden sm:block" />

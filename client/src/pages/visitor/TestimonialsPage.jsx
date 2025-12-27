@@ -1,3 +1,5 @@
+import Breadcrumb from '../../components/Breadcrumb';
+
 function TestimonialsPage() {
   const testimonials = Array(8).fill({
     name: 'Name Surname',
@@ -11,11 +13,8 @@ function TestimonialsPage() {
   return (
     <section className="bg-mh-white py-20">
       <div className="max-w-7xl mx-auto px-6">
-
         {/* Breadcrumb */}
-        <p className="text-sm text-gray-500 mb-4">
-          Home / Testimonials
-        </p>
+        <Breadcrumb />
 
         {/* Title */}
         <h1 className="text-3xl lg:text-4xl font-bold text-mh-dark mb-14">

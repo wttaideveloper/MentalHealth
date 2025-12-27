@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
 
 function AssessmentViaLinkTestPage() {
   const navigate = useNavigate();
@@ -15,13 +16,7 @@ function AssessmentViaLinkTestPage() {
     <div className="min-h-screen bg-gray-50 px-4 sm:px-8 lg:px-20 xl:px-40 py-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-2">
-        <div className="flex items-center text-xs sm:text-sm text-gray-600 flex-wrap">
-          <span>Home</span>
-          <span className="mx-1 sm:mx-2">›</span>
-          <span className="hidden sm:inline">My Assessments</span>
-          <span className="mx-1 sm:mx-2 hidden sm:inline">›</span>
-          <span className="text-mh-green text-xs sm:text-sm">Strengths and Difficulties Questionnaire</span>
-        </div>
+        <Breadcrumb isLoggedIn={false} customLabel="Assessment Test" />
         <div className="text-xs sm:text-sm text-gray-500">
           Last updated: 15 Dec 2025
         </div>

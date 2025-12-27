@@ -1,21 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
 
 function AssessmentTestResultPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-50 px-40 py-6">
+    <div className="min-h-screen bg-gray-50 px-4 sm:px-6 lg:px-40 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center text-sm text-gray-600">
-          <span>Home</span>
-          <span className="mx-2"></span>
-          <span>My Assessments</span>
-          <span className="mx-2"></span>
-          <span className="text-mh-green">Strengths and Difficulties Questionnaire</span>
-        </div>
-      </div>
+      <Breadcrumb isLoggedIn={true} customLabel="Strengths and Difficulties Questionnaire" />
 
       {/* Result Header */}
       <div className="bg-mh-gradient rounded-xl p-16 mb-6 text-white">

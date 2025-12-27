@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import assHero from '../../assets/images/ass-hero.png';
 import f1 from '../../assets/images/f1.png';
 import f2 from '../../assets/images/f2.png';
+import Breadcrumb from '../../components/Breadcrumb';
 
 function MyAssessmentsPage() {
   const [activeTab, setActiveTab] = useState('ongoing');
@@ -10,6 +11,8 @@ function MyAssessmentsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
+      {/* Breadcrumb */}
+      <Breadcrumb isLoggedIn={true} />
       {/* Hero Section */}
       <div className="bg-mh-gradient rounded-2xl p-6 sm:p-8 mb-6 sm:mb-8 relative overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">

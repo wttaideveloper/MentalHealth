@@ -1,12 +1,15 @@
+import { useLocation } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
+
 function ContactUsPage() {
+  const location = useLocation();
+  const isLoggedIn = location.pathname.startsWith('/user');
+  
   return (
     <section className="bg-mh-white py-20">
       <div className="max-w-7xl mx-auto px-6">
-
         {/* Breadcrumb */}
-        <p className="text-sm text-gray-500 mb-6">
-          Home / Contact Us
-        </p>
+        <Breadcrumb isLoggedIn={isLoggedIn} />
 
         {/* Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">

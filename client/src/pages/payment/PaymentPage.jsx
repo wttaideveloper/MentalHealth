@@ -5,6 +5,7 @@ import cardsIcon from '../../assets/images/cards-2.svg';
 import netBankingIcon from '../../assets/images/net-banking-2.svg';
 import visaIcon from '../../assets/images/visa.svg';
 import cardIcon from '../../assets/images/cardIcon.svg';
+import Breadcrumb from '../../components/Breadcrumb';
 
 
 function PaymentPage() {
@@ -20,17 +21,7 @@ function PaymentPage() {
     <div className="min-h-screen bg-mh-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Breadcrumb */}
-        <div className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto">
-          <div className="flex whitespace-nowrap">
-            <span className="cursor-pointer hover:text-gray-700">Home</span> 
-            <span className="mx-1 sm:mx-2">/</span> 
-            <span className="cursor-pointer hover:text-gray-700">All Assessments</span> 
-            <span className="mx-1 sm:mx-2">/</span> 
-            <span className="cursor-pointer hover:text-gray-700">Anxiety Assessment</span> 
-            <span className="mx-1 sm:mx-2">/</span> 
-            <span className="text-[#039059] font-medium">Check out</span>
-          </div>
-        </div>
+        <Breadcrumb isLoggedIn={true} />
 
         <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6 sm:mb-8">Check Out</h1>
 

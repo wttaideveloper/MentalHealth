@@ -3,6 +3,7 @@ import f2 from '../../assets/images/f2.png';
 import f3 from '../../assets/images/f3.png';
 import { Search, Filter, Star } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import Breadcrumb from '../../components/Breadcrumb';
 
 function AllAssessmentsPage() {
   const navigate = useNavigate();
@@ -26,11 +27,8 @@ function AllAssessmentsPage() {
   return (
     <section className="bg-mh-white py-12 sm:py-16 lg:py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-
         {/* Breadcrumb */}
-        <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
-          Home / All Assessments
-        </p>
+        <Breadcrumb isLoggedIn={isUserContext} />
 
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12">
