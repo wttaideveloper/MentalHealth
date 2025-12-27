@@ -129,7 +129,7 @@ function ContactUsPage() {
               <div>
                 <button
                   type="submit"
-                  className="px-10 py-3 rounded-full bg-mh-green text-mh-white font-semibold hover:opacity-90 transition"
+                  className="px-10 py-3 rounded-full bg-mh-gradient text-mh-white font-semibold hover:opacity-90 transition"
                 >
                   Send
                 </button>

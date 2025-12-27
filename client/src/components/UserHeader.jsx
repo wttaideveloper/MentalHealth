@@ -202,7 +202,7 @@ function UserHeader() {
                   setIsMobileMenuOpen(false);
                   handleLogout();
                 }}
-                className="w-full text-left px-3 py-2 bg-mh-green text-mh-white rounded-lg font-medium mt-2"
+                className="w-full text-left px-3 py-2 bg-mh-gradient text-mh-white rounded-lg font-medium mt-2"
               >
                 Logout
               </button>

@@ -88,7 +88,7 @@ function SignUpPage() {
   };
 
   const handleBack = () => {
-    navigate('/'); // Go back to login page
+    navigate('/login'); // Go back to login page
   };
 
   return (
@@ -245,7 +245,7 @@ function SignUpPage() {
                 <div className="text-center">
                   <span className="text-sm text-gray-600">Already have an account? </span>
                   <button 
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate('/login')}
                     className="text-sm text-mh-green hover:underline font-medium"
                   >
                     Sign In
