@@ -68,7 +68,12 @@ function EnterPassword() {
   };
 
   const handleForgotPassword = () => {
-    navigate('/otp'); // Navigate to OTP for password reset
+    navigate('/otp', { 
+      state: { 
+        email: email,
+        isForgotPassword: true 
+      } 
+    }); // Navigate to OTP for password reset
   };
 
   return (

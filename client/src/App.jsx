@@ -6,6 +6,7 @@ import OtpPage from './pages/auth/OtpPage';
 import EnterPassword from './pages/auth/EnterPassword';
 import SignUpPage from './pages/auth/SignUpPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 // Visitor Pages
 import HomePage from './pages/visitor/HomePage';
 import AllAssessmentsPage from './pages/visitor/AllAssessmentsPage';
@@ -45,6 +46,7 @@ function App() {
         <Route path="/otp" element={<Layout showHeaderFooter={false}><OtpPage /></Layout>} />
         <Route path="/verify-email" element={<Layout showHeaderFooter={false}><OtpPage /></Layout>} />
         <Route path="/password" element={<Layout showHeaderFooter={false}><EnterPassword /></Layout>} />
+        <Route path="/reset-password" element={<Layout showHeaderFooter={false}><ResetPasswordPage /></Layout>} />
         <Route path="/signup" element={<Layout showHeaderFooter={false}><SignUpPage /></Layout>} />
         <Route path="/register" element={<Layout showHeaderFooter={false}><RegisterPage /></Layout>} />
         

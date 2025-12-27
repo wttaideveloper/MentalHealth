@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import bgImage from '../../assets/images/Rectangle 40026.png';
 import otpImg from '../../assets/images/otp-img.png';
-import { verifyEmail, resendVerificationCode } from '../../api/authApi';
+import { verifyEmail, resendVerificationCode, forgotPassword, resetPassword } from '../../api/authApi';
 
 function OtpPage() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']); // Changed to 6 digits to match typical email verification tokens
@@ -11,6 +11,8 @@ function OtpPage() {
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetToken, setResetToken] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -20,6 +22,8 @@ function OtpPage() {
     const emailFromUrl = searchParams.get('email');
     const emailFromState = location.state?.email;
     const isSignUpFromState = location.state?.isSignUp;
+    const isForgotPasswordFromState = location.state?.isForgotPassword;
+    const tokenFromUrl = searchParams.get('token');
     
     if (emailFromUrl) {
       setEmail(emailFromUrl);
@@ -30,7 +34,40 @@ function OtpPage() {
     if (isSignUpFromState) {
       setIsSignUp(true);
     }
+    
+    // Check if this is a forgot password flow
+    if (isForgotPasswordFromState || tokenFromUrl) {
+      setIsForgotPassword(true);
+      if (tokenFromUrl) {
+        setResetToken(tokenFromUrl);
+      }
+    }
   }, [location, searchParams]);
+
+  // Automatically send forgot password email when component mounts for forgot password flow
+  useEffect(() => {
+    const sendForgotPasswordEmail = async () => {
+      if (isForgotPassword && email && !resetToken) {
+        // Only send if we don't have a token (meaning user came from EnterPassword, not from email link)
+        try {
+          setLoading(true);
+          const response = await forgotPassword(email);
+          if (response.success) {
+            // Show success message
+            setError('');
+            // Note: Server sends reset link via email, not OTP code
+          }
+        } catch (err) {
+          console.error('Failed to send forgot password email:', err);
+          // Don't show error - server doesn't reveal if user exists for security
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    sendForgotPasswordEmail();
+  }, [isForgotPassword, email, resetToken]);
 
   const handleOtpChange = (index, value) => {
     // Only allow digits
@@ -74,16 +111,32 @@ function OtpPage() {
     setError('');
 
     try {
-      const response = await verifyEmail(email, otpValue);
-      
-      if (response.success) {
-        navigate('/login', { 
-          state: { 
-            message: 'Email verified successfully! Please login.' 
-          } 
+      if (isForgotPassword) {
+        // For forgot password, check if we have a token from URL or use OTP as token
+        // The server sends a token in the reset email URL, but user might enter it as OTP
+        const tokenToUse = resetToken || otpValue;
+        
+        // Navigate to reset password page with the token
+        navigate('/reset-password', {
+          state: {
+            email: email,
+            token: tokenToUse,
+            message: 'Please enter your new password.'
+          }
         });
       } else {
-        setError(response.message || 'Verification failed. Please try again.');
+        // For signup verification
+        const response = await verifyEmail(email, otpValue);
+        
+        if (response.success) {
+          navigate('/login', { 
+            state: { 
+              message: 'Email verified successfully! Please login.' 
+            } 
+          });
+        } else {
+          setError(response.message || 'Verification failed. Please try again.');
+        }
       }
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Verification failed. Please check the code and try again.';
@@ -111,14 +164,25 @@ function OtpPage() {
     setError('');
 
     try {
-      const response = await resendVerificationCode(email);
+      let response;
+      
+      if (isForgotPassword) {
+        // For forgot password, call forgotPassword API to resend reset code
+        response = await forgotPassword(email);
+      } else {
+        // For signup verification, call resendVerificationCode API
+        response = await resendVerificationCode(email);
+      }
       
       if (response.success) {
         // Clear OTP inputs
         setOtp(['', '', '', '', '', '']);
         setError('');
-        // Show success message (you can add a toast notification here)
-        alert('Verification code has been sent to your email.');
+        // Show success message
+        const message = isForgotPassword 
+          ? 'Password reset code has been sent to your email.'
+          : 'Verification code has been sent to your email.';
+        alert(message);
       } else {
         setError(response.message || 'Failed to resend code. Please try again.');
       }
@@ -172,11 +236,18 @@ function OtpPage() {
             <div className="space-y-6">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-mh-dark mb-4">
-                  Enter OTP
+                  {isForgotPassword ? 'Reset Password' : 'Enter OTP'}
                 </h1>
                 <p className="text-sm text-gray-600 mb-2">
-                  We have sent a verification code to your registered email
+                  {isForgotPassword 
+                    ? 'We have sent a password reset link to your registered email. Please check your email and click the link to reset your password.'
+                    : 'We have sent a verification code to your registered email'}
                 </p>
+                {isForgotPassword && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    If you don't see the email, check your spam folder or click "Resend" to receive a new reset link.
+                  </p>
+                )}
                 <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-mh-dark">{email || 'johndavid@gmail.com'}</span>
                   <button 
@@ -195,58 +266,80 @@ function OtpPage() {
                   </div>
                 )}
                 
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <label className="block text-sm font-medium text-mh-dark">
-                      Verification Code
-                    </label>
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        type="button"
-                        onClick={handleResend}
-                        className="text-sm text-mh-green hover:underline"
-                      >
-                        Resend
-                      </button>
+                {!isForgotPassword && (
+                  <>
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <label className="block text-sm font-medium text-mh-dark">
+                          Verification Code
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            type="button"
+                            onClick={handleResend}
+                            className="text-sm text-mh-green hover:underline"
+                          >
+                            Resend
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* OTP Input Fields */}
+                      <div className="flex space-x-3 justify-center">
+                        {otp.map((digit, index) => (
+                          <input
+                            key={index}
+                            ref={(el) => (inputRefs.current[index] = el)}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength="1"
+                            value={digit}
+                            onChange={(e) => handleOtpChange(index, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(index, e)}
+                            className="w-12 h-12 text-center text-lg font-semibold border border-gray-300 rounded-lg focus:border-mh-green focus:outline-none bg-mh-white"
+                          />
+                        ))}
+                      </div>
                     </div>
+
+                    <button
+                      onClick={handleVerify}
+                      disabled={loading}
+                      className="bg-mh-gradient w-full py-4 text-mh-white font-semibold rounded-xl text-base hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Verifying...' : 'Verify'}
+                    </button>
+                  </>
+                )}
+
+                {isForgotPassword && (
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm">
+                      <p className="font-medium mb-1">Password reset email sent!</p>
+                      <p>Please check your email inbox (and spam folder) for the password reset link. Click the link in the email to reset your password.</p>
+                    </div>
+                    <button
+                      onClick={handleResend}
+                      disabled={loading}
+                      className="bg-mh-gradient w-full py-4 text-mh-white font-semibold rounded-xl text-base hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Sending...' : 'Resend Reset Link'}
+                    </button>
                   </div>
-                  
-                  {/* OTP Input Fields */}
-                  <div className="flex space-x-3 justify-center">
-                    {otp.map((digit, index) => (
-                      <input
-                        key={index}
-                        ref={(el) => (inputRefs.current[index] = el)}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength="1"
-                        value={digit}
-                        onChange={(e) => handleOtpChange(index, e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(index, e)}
-                        className="w-12 h-12 text-center text-lg font-semibold border border-gray-300 rounded-lg focus:border-mh-green focus:outline-none bg-mh-white"
-                      />
-                    ))}
-                  </div>
+                )}
+              </div>
+
+              {/* Use Password Link - Only show for non-forgot-password flows */}
+              {!isForgotPassword && (
+                <div className="text-center">
+                  <button 
+                    onClick={handleUsePassword}
+                    className="text-sm text-mh-green hover:underline"
+                  >
+                    Use password to login
+                  </button>
                 </div>
-
-                <button
-                  onClick={handleVerify}
-                  disabled={loading}
-                  className="bg-mh-gradient w-full py-4 text-mh-white font-semibold rounded-xl text-base hover:opacity-90 transition-opacity duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Verifying...' : 'Verify'}
-                </button>
-              </div>
-
-              {/* Use Password Link */}
-              <div className="text-center">
-                <button 
-                  onClick={handleUsePassword}
-                  className="text-sm text-mh-green hover:underline"
-                >
-                  Use password to login
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>
