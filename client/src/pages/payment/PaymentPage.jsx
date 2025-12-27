@@ -18,29 +18,31 @@ function PaymentPage() {
 
   return (
     <div className="min-h-screen bg-mh-white">
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Breadcrumb */}
-        <div className="text-sm text-gray-500 mb-6">
-          <span className="cursor-pointer hover:text-gray-700">Home</span> 
-          <span className="mx-2">/</span> 
-          <span className="cursor-pointer hover:text-gray-700">All Assessments</span> 
-          <span className="mx-2">/</span> 
-          <span className="cursor-pointer hover:text-gray-700">Anxiety Assessment</span> 
-          <span className="mx-2">/</span> 
-          <span className="text-[#039059] font-medium">Check out</span>
+        <div className="text-xs sm:text-sm text-gray-500 mb-4 sm:mb-6 overflow-x-auto">
+          <div className="flex whitespace-nowrap">
+            <span className="cursor-pointer hover:text-gray-700">Home</span> 
+            <span className="mx-1 sm:mx-2">/</span> 
+            <span className="cursor-pointer hover:text-gray-700">All Assessments</span> 
+            <span className="mx-1 sm:mx-2">/</span> 
+            <span className="cursor-pointer hover:text-gray-700">Anxiety Assessment</span> 
+            <span className="mx-1 sm:mx-2">/</span> 
+            <span className="text-[#039059] font-medium">Check out</span>
+          </div>
         </div>
 
-        <h1 className="text-3xl font-bold text-black mb-8">Check Out</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-black mb-6 sm:mb-8">Check Out</h1>
 
-        <div className="grid grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
           {/* Left Column - Main Content */}
-          <div className="col-span-8">
+          <div className="lg:col-span-8">
             {/* Billing Information */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-black mb-6">Billing Information</h2>
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-lg sm:text-xl font-semibold text-black mb-4 sm:mb-6">Billing Information</h2>
               
               {/* Country and State on same line */}
-              <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 sm:mb-8">
                 {/* Country */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
@@ -97,12 +99,12 @@ function PaymentPage() {
               </div>
 
               {/* Payment Option Header */}
-              <h2 className="text-xl font-semibold text-black mb-4">Payment Option</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-black mb-4">Payment Option</h2>
               
               {/* Payment Options and Card Details Side by Side */}
-              <div className="grid grid-cols-12 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
                 {/* Left - Payment Options */}
-                <div className="col-span-4">
+                <div className="lg:col-span-4">
                   {/* UPI Option */}
                   <div className="mb-3">
                     <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
@@ -165,7 +167,7 @@ function PaymentPage() {
                 </div>
 
                 {/* Right - Card Details Form */}
-                <div className="col-span-8">
+                <div className="lg:col-span-8">
                   <div className="space-y-4">
                     {/* Card Number */}
                     <div>
@@ -201,7 +203,7 @@ function PaymentPage() {
                     </div>
                     
                     {/* Expire Date and CVC */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Expire Date</label>
                         <input 
@@ -230,28 +232,28 @@ function PaymentPage() {
           </div>
 
           {/* Right Column - Order Details */}
-          <div className="col-span-4">
+          <div className="lg:col-span-4 order-first lg:order-last">
             {/* Order Details */}
-            <div className="bg-mh-light  shadow-sm p-6 border-b">
-              <h3 className="text-lg font-semibold text-black mb-6">Order Details</h3>
-              <div className="flex items-start space-x-4 mb-2">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-50 to-emerald-50 rounded-lg flex items-center justify-center">
+            <div className="bg-mh-light shadow-sm p-4 sm:p-6 border-b">
+              <h3 className="text-lg font-semibold text-black mb-4 sm:mb-6">Order Details</h3>
+              <div className="flex items-start space-x-3 sm:space-x-4 mb-2">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-50 to-emerald-50 rounded-lg flex items-center justify-center flex-shrink-0">
                   <img src={anxietyAssessment} alt="Anxiety Assessment" className="w-full h-full object-cover" />
                 </div>
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-1">Anxiety Assessment</h4>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">Anxiety Assessment</h4>
                   <div className="flex items-center space-x-2">
-                    <span className="text-[#039059] font-bold text-lg">$150</span>
-                    <span className="text-gray-400 line-through text-sm">$300</span>
+                    <span className="text-[#039059] font-bold text-base sm:text-lg">$150</span>
+                    <span className="text-gray-400 line-through text-xs sm:text-sm">$300</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Order Summary */}
-            <div className="bg-mh-light shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-black mb-6">Order Summary</h3>
-              <div className="space-y-4 text-sm mb-6">
+            <div className="bg-mh-light shadow-sm p-4 sm:p-6">
+              <h3 className="text-lg font-semibold text-black mb-4 sm:mb-6">Order Summary</h3>
+              <div className="space-y-3 sm:space-y-4 text-sm mb-4 sm:mb-6">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Sub-total</span>
                   <span className="text-gray-900 font-medium">$150</span>
@@ -264,8 +266,8 @@ function PaymentPage() {
                   <span className="text-gray-600">Tax</span>
                   <span className="text-gray-900 font-medium">$10</span>
                 </div>
-                <div className="border-t pt-4 mt-2">
-                  <div className="flex justify-between font-bold text-lg">
+                <div className="border-t pt-3 sm:pt-4 mt-2">
+                  <div className="flex justify-between font-bold text-base sm:text-lg">
                     <span className="text-black">Total</span>
                     <span className="text-black">$160</span>
                   </div>
@@ -273,7 +275,7 @@ function PaymentPage() {
               </div>
               
               {/* Terms */}
-              <div className="text-xs text-gray-500 leading-relaxed mb-6">
+              <div className="text-xs text-gray-500 leading-relaxed mb-4 sm:mb-6">
                 By completing your purchase, you agree to these{' '}
                 <span className="text-[#039059] underline cursor-pointer font-medium">Terms of Use</span>
               </div>
