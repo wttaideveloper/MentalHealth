@@ -4,12 +4,12 @@ import bgImage from '../../assets/images/Rectangle 40026.png';
 import otpImg from '../../assets/images/otp-img.png';
 import { login } from '../../api/authApi';
 import { setTokens } from '../../utils/auth';
+import { showToast } from '../../utils/toast';
 
 function EnterPassword() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,17 +26,16 @@ function EnterPassword() {
     e?.preventDefault();
     
     if (!password || !password.trim()) {
-      setError('Please enter your password');
+      showToast.error('Please enter your password');
       return;
     }
 
     if (!email) {
-      setError('Email is required');
+      showToast.error('Email is required');
       return;
     }
 
     setLoading(true);
-    setError('');
 
     try {
       const response = await login(email, password);
@@ -45,15 +44,16 @@ function EnterPassword() {
         // Store tokens
         setTokens(response.data.accessToken, response.data.refreshToken);
         
+        showToast.success('Login successful!');
         // Navigate to user home
         navigate('/user-home');
       } else {
-        setError(response.message || 'Login failed. Please try again.');
+        showToast.error(response.message || 'Login failed. Please try again.');
       }
     } catch (err) {
       // Handle error response
       const errorMessage = err.response?.data?.message || 'Login failed. Please check your credentials.';
-      setError(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -145,10 +145,7 @@ function EnterPassword() {
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setError('');
-                      }}
+                      onChange={(e) => setPassword(e.target.value)}
                       placeholder="Enter Password"
                       className="input-field pr-12"
                     />
@@ -169,9 +166,6 @@ function EnterPassword() {
                       )}
                     </button>
                   </div>
-                  {error && (
-                    <p className="text-red-500 text-sm mt-2">{error}</p>
-                  )}
                   <div className="text-right mt-2">
                     <button 
                       type="button"

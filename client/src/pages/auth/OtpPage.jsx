@@ -4,6 +4,7 @@ import bgImage from '../../assets/images/Rectangle 40026.png';
 import otpImg from '../../assets/images/otp-img.png';
 import { verifyEmail, resendVerificationCode, forgotPassword, resetPassword, sendLoginOtp, loginWithOtp } from '../../api/authApi';
 import { setTokens } from '../../utils/auth';
+import { showToast } from '../../utils/toast';
 
 function OtpPage() {
   const [otp, setOtp] = useState(['', '', '', '', '', '']); // Changed to 6 digits to match typical email verification tokens
@@ -15,8 +16,6 @@ function OtpPage() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isLogin, setIsLogin] = useState(false);
   const [resetToken, setResetToken] = useState('');
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -63,9 +62,7 @@ function OtpPage() {
           const response = await sendLoginOtp(email);
           if (response.success) {
             setError('');
-            // Show success message in modal
-            setSuccessMessage('Login OTP code has been sent to your email.');
-            setShowSuccessModal(true);
+            showToast.success('Login OTP sent to your email!');
           }
         } catch (err) {
           console.error('Failed to send login OTP:', err);
@@ -162,6 +159,7 @@ function OtpPage() {
           // Store tokens
           setTokens(response.data.accessToken, response.data.refreshToken);
           
+          showToast.success('Login successful!');
           // Navigate to user home
           navigate('/user-home');
         } else {
@@ -172,6 +170,7 @@ function OtpPage() {
         const response = await verifyEmail(email, otpValue);
         
         if (response.success) {
+          showToast.success('Email verified successfully!');
           navigate('/login', { 
             state: { 
               message: 'Email verified successfully! Please login.' 
@@ -224,14 +223,13 @@ function OtpPage() {
         // Clear OTP inputs
         setOtp(['', '', '', '', '', '']);
         setError('');
-        // Show success message in modal
+        // Show success message with toast
         const message = isForgotPassword 
-          ? 'Password reset code has been sent to your email.'
+          ? 'Password reset code sent to your email!'
           : isLogin
-          ? 'Login OTP code has been sent to your email.'
-          : 'Verification code has been sent to your email.';
-        setSuccessMessage(message);
-        setShowSuccessModal(true);
+          ? 'Login OTP sent to your email!'
+          : 'Verification code sent to your email!';
+        showToast.success(message);
       } else {
         setError(response.message || 'Failed to resend code. Please try again.');
       }
@@ -244,48 +242,7 @@ function OtpPage() {
   };
 
   return (
-    <>
-      {/* Success Modal */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
-            {/* Close Button */}
-            <button
-              onClick={() => setShowSuccessModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            {/* Success Icon */}
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-mh-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Message */}
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-mh-dark mb-2">Success!</h3>
-              <p className="text-sm text-gray-600 mb-6">{successMessage}</p>
-              
-              {/* OK Button */}
-              <button
-                onClick={() => setShowSuccessModal(false)}
-                className="bg-mh-gradient text-mh-white px-6 py-2 rounded-lg font-medium hover:opacity-90 transition-opacity"
-              >
-                OK
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="min-h-screen bg-mh-light flex">
+    <div className="min-h-screen bg-mh-light flex">
         {/* Left Side - Illustration */}
       <div 
         className="hidden lg:flex lg:w-1/2 items-center justify-center p-8 relative"
@@ -437,7 +394,6 @@ function OtpPage() {
         </div>
       </div>
     </div>
-    </>
   );
 }
 

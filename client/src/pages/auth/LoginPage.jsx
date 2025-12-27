@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import bgImage from '../../assets/images/Rectangle 40026.png';
 import loginImg from '../../assets/images/login-img.png';
+import { showToast } from '../../utils/toast';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -13,18 +13,18 @@ function LoginPage() {
     e?.preventDefault();
     
     if (!email || !email.trim()) {
-      setError('Please enter your email');
+      showToast.error('Please enter your email');
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
+      showToast.error('Please enter a valid email address');
       return;
     }
 
-    setError('');
+    showToast.success('Email verified! Proceeding to password.');
     // Navigate to password page with email in state
     navigate('/password', { state: { email: email.trim() } });
   };
@@ -80,16 +80,10 @@ function LoginPage() {
                 <input
                   type="text"
                   value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError('');
-                  }}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter Mobile number / Email"
                   className="input-field"
                 />
-                {error && (
-                  <p className="text-red-500 text-sm mt-1">{error}</p>
-                )}
               </div>
 
               <button

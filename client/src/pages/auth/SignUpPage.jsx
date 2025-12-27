@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import bgImage from '../../assets/images/Rectangle 40026.png';
 import signupImg from '../../assets/images/signup.png';
 import { signup } from '../../api/authApi';
+import { showToast } from '../../utils/toast';
 
 function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -14,7 +15,6 @@ function SignUpPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleInputChange = (field, value) => {
@@ -22,29 +22,28 @@ function SignUpPage() {
       ...prev,
       [field]: value
     }));
-    setError('');
   };
 
   const validateForm = () => {
     if (!formData.firstName.trim()) {
-      setError('First name is required');
+      showToast.error('First name is required');
       return false;
     }
     if (!formData.lastName.trim()) {
-      setError('Last name is required');
+      showToast.error('Last name is required');
       return false;
     }
     if (!formData.email.trim()) {
-      setError('Email is required');
+      showToast.error('Email is required');
       return false;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address');
+      showToast.error('Please enter a valid email address');
       return false;
     }
     if (!formData.password || formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      showToast.error('Password must be at least 6 characters long');
       return false;
     }
     return true;
@@ -58,7 +57,6 @@ function SignUpPage() {
     }
 
     setLoading(true);
-    setError('');
 
     try {
       const response = await signup(
@@ -69,6 +67,7 @@ function SignUpPage() {
       );
 
       if (response.success) {
+        showToast.success('Account created successfully!');
         // Navigate to OTP page with email for verification
         navigate('/otp', { 
           state: { 
@@ -77,11 +76,11 @@ function SignUpPage() {
           } 
         });
       } else {
-        setError(response.message || 'Sign up failed. Please try again.');
+        showToast.error(response.message || 'Sign up failed. Please try again.');
       }
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Sign up failed. Please try again.';
-      setError(errorMessage);
+      showToast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -136,12 +135,6 @@ function SignUpPage() {
                   SignUp
                 </h1>
               </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
 
               <form onSubmit={handleContinue} className="space-y-4">
                 {/* First Name */}

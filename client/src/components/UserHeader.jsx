@@ -4,6 +4,7 @@ import logo from '../assets/images/logo.png';
 import profileImage from '../assets/images/profile.png';
 import { getMe } from '../api/authApi';
 import { clearTokens, getRefreshToken } from '../utils/auth';
+import { showToast } from '../utils/toast';
 
 function UserHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -62,12 +63,14 @@ function UserHeader() {
       }
       clearTokens();
       setIsDropdownOpen(false);
+      showToast.success('Logged out successfully!');
       navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
       // Clear tokens and redirect anyway
       clearTokens();
       setIsDropdownOpen(false);
+      showToast.success('Logged out successfully!');
       navigate('/login');
     }
   };
