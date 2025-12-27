@@ -19,6 +19,10 @@ import AssessmentTestResultPage from './pages/user/AssessmentTestResultPage';
 // Shared Pages
 import AboutUsPage from './pages/shared/AboutUsPage';
 import ContactUsPage from './pages/shared/ContactUsPage';
+// Assessment Via Link Pages
+import AssessmentViaLinkPage1 from './pages/assessmentViaLink/AssessmentViaLinkPage1';
+import AssessmentViaLinkPage2 from './pages/assessmentViaLink/AssessmentViaLinkPage2';
+import AssessmentViaLinkTestPage from './pages/assessmentViaLink/AssessmentViaLinkTestPage';
 // Other Pages 
 import DashboardPage from './pages/dashboard/DashboardPage';
 import PaymentPage from './pages/payment/PaymentPage';
@@ -52,6 +56,11 @@ function App() {
         <Route path="/my-assessments" element={<Layout isLoggedIn={true}><MyAssessmentsPage /></Layout>} />
         <Route path="/assessment-test/:id" element={<Layout isLoggedIn={true} showHeaderFooter={false}><AssessmentTestPage /></Layout>} />
         <Route path="/test-result/:id" element={<Layout isLoggedIn={true} showHeaderFooter={false}><AssessmentTestResultPage /></Layout>} />
+        
+        {/* Assessment Via Link Routes */}
+        <Route path="/assessment-link" element={<Layout showHeaderFooter={false}><AssessmentViaLinkPage1 /></Layout>} />
+        <Route path="/assessment-link/step2" element={<Layout showHeaderFooter={false}><AssessmentViaLinkPage2 /></Layout>} />
+        <Route path="/assessment-link/test" element={<Layout showHeaderFooter={false}><AssessmentViaLinkTestPage /></Layout>} />
         
         {/* Assessment & Payment Routes */}
         <Route path="/dashboard" element={<Layout isLoggedIn={true}><DashboardPage /></Layout>} />
