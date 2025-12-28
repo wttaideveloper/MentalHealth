@@ -211,7 +211,10 @@ function MyAssessmentsPage() {
                         </svg>
                         Download Report
                       </button>
-                      <button className="bg-mh-gradient hover:bg-green-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-colors">
+                      <button 
+                        onClick={() => navigate('/test-result/1')}
+                        className="bg-mh-gradient hover:bg-green-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-colors"
+                      >
                         View
                       </button>
                     </div>
@@ -267,7 +270,10 @@ function MyAssessmentsPage() {
                         </svg>
                         Download Report
                       </button>
-                      <button className="bg-mh-gradient hover:bg-green-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-colors">
+                      <button 
+                        onClick={() => navigate('/test-result/2')}
+                        className="bg-mh-gradient hover:bg-green-700 text-white px-5 py-2 rounded-full text-sm font-medium transition-colors"
+                      >
                         View
                       </button>
                     </div>
