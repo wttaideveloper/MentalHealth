@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useLayoutEffect, useRef } from 'react';
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 
 import heroImage from '../../assets/images/hero-home.png';
@@ -9,9 +11,158 @@ import serviceImage from '../../assets/images/service-img.png'
 import assessmentMatterImage from '../../assets/images/asses-m.png'
 import soukya from '../../assets/images/soukya.png'
 
-
+gsap.registerPlugin(ScrollTrigger);
 
 function HomePage() {
+
+  const sectionRef = useRef(null);
+  const cardsRef = useRef([]);
+
+  const cards = [
+    {
+      title: "Anxiety Assessment",
+      description: "A quick screening that helps identify symptoms of excessive worry, tension, and emotional overwhelm.",
+      duration: "10–12 minutes",
+      questions: "20 questions",
+      image: f1,
+      bg: "#FBEBDC"
+    },
+    {
+      title: "Depression Screening",
+      description: "Evaluates mood patterns, motivation levels, and emotional well-being to detect signs of low mood or persistent sadness.",
+      duration: "10–12 minutes",
+      questions: "20 questions",
+      image: f2,
+      bg: "#D5DCEE"
+    },
+    {
+      title: "ADHD / Attention Difficulty Screening",
+      description: "Assesses focus, impulsivity, and attention-related challenges to support early understanding of ADHD-like symptoms.",
+      duration: "10–12 minutes",
+      questions: "20 questions",
+      image: f3,
+      bg: "#F7E3EE"
+    },
+  ];
+
+  useLayoutEffect(() => {
+    const ctx = gsap.context(() => {
+      const els = cardsRef.current;
+
+      // Setup with better initial positioning
+      gsap.set(els, { 
+        position: "absolute", 
+        inset: 0,
+        transformOrigin: "center center"
+      });
+      
+      // Initial states - cards stacked with depth
+      gsap.set(els[0], { 
+        y: 0, 
+        scale: 1, 
+        opacity: 1,
+        zIndex: 30,
+        rotateX: 0,
+        filter: "blur(0px)"
+      });
+      
+      gsap.set(els[1], { 
+        y: 40, 
+        scale: 0.96, 
+        opacity: 0.7,
+        zIndex: 20,
+        rotateX: 3,
+        filter: "blur(1px)"
+      });
+      
+      gsap.set(els[2], { 
+        y: 80, 
+        scale: 0.92, 
+        opacity: 0.4,
+        zIndex: 10,
+        rotateX: 6,
+        filter: "blur(2px)"
+      });
+
+      // Enhanced transition function with smoother animation
+      const createTransition = (prevIndex, nextIndex) => {
+        const tl = gsap.timeline();
+        
+        // Phase 1: Current card lifts and fades out
+        tl.to(els[prevIndex], {
+          y: -80,
+          scale: 0.9,
+          opacity: 0.5,
+          rotateX: -8,
+          filter: "blur(4px)",
+          duration: 0.5,
+          ease: "power3.in",
+        })
+        // Phase 2: Complete exit
+        .to(els[prevIndex], {
+          y: -150,
+          scale: 0.85,
+          opacity: 0,
+          rotateX: -15,
+          filter: "blur(8px)",
+          duration: 0.5,
+          ease: "power3.inOut",
+        });
+
+        // Next card comes to front with spring-like motion
+        tl.to(els[nextIndex], {
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          rotateX: 0,
+          zIndex: 30,
+          filter: "blur(0px)",
+          duration: 0.9,
+          ease: "power3.out",
+        }, "<0.2");
+
+        // Card after next moves up smoothly in stack
+        if (nextIndex + 1 < els.length) {
+          tl.to(els[nextIndex + 1], {
+            y: 40,
+            scale: 0.96,
+            opacity: 0.7,
+            rotateX: 3,
+            filter: "blur(1px)",
+            duration: 0.9,
+            ease: "power2.out",
+          }, "<0.1");
+        }
+
+        // Breathing pause between transitions
+        tl.to({}, { duration: 0.6 });
+
+        return tl;
+      };
+
+      // Main timeline with optimized scroll control
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: sectionRef.current,
+          start: "top top",
+          end: "+=450%",
+          pin: true,
+          scrub: 1.8,
+          anticipatePin: 1,
+        },
+      });
+
+      // Add transitions with refined spacing
+      tl.add(createTransition(0, 1), "+=0.5");
+      tl.add(createTransition(1, 2), "+=0.5");
+      
+      // Final hold
+      tl.to({}, { duration: 1.5 });
+
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
 
   const assessments = [
     { img: f1 },
@@ -117,12 +268,10 @@ function HomePage() {
       </section>
 
       {/* Featured Assessments Section */}
-
-      <section className="bg-mh-white py-12 md:py-16 lg:py-24">
+      <section className="bg-white pt-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-
           {/* Section Header */}
-          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+          <div className="text-center">
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-mh-dark mb-3 sm:mb-4">
               Featured Assessments
             </h2>
@@ -131,156 +280,66 @@ function HomePage() {
               private report you can confidently share with a professional.
             </p>
           </div>
-
-          {/* Cards */}
-          <div className="space-y-6 sm:space-y-8 lg:space-y-10">
-
-            {/* Card 1 */}
-            <div className="bg-[#FBEBDC] rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 items-center">
-
-              {/* Left */}
-              <div>
-                <h3 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-3">
-                  Anxiety Assessment
-                </h3>
-                <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6 max-w-md">
-                  A quick screening that helps identify symptoms of excessive worry,
-                  tension, and emotional overwhelm.
-                </p>
-
-                <div className="flex gap-6 sm:gap-8 lg:gap-10 mb-4 sm:mb-6">
-                  <div>
-                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-xs sm:text-sm text-mh-dark font-bold mb-1">Duration</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-700">10–12 minutes</p>
-                  </div>
-                  <div>
-                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-xs sm:text-sm text-mh-dark font-bold mb-1">Questions</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-700">20 questions</p>
-                  </div>
-                </div>
-
-                <button className="px-6 py-2 rounded-full bg-mh-gradient text-mh-white text-sm">
-                  View Details
-                </button>
-              </div>
-
-              {/* Right */}
-              <div className="relative">
-                <span className="absolute top-4 left-4 bg-mh-white text-xs px-3 py-1 rounded-full shadow">
-                  Research-Based
-                </span>
-                <img
-                  src={f1}
-                  alt="Anxiety assessment"
-                  className="rounded-xl sm:rounded-2xl w-full h-[200px] sm:h-[250px] lg:h-[300px] object-cover"
-                />
-              </div>
-
-            </div>
-
-            {/* Card 2 */}
-            <div className="bg-[#D5DCEE] rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 items-center">
-
-              <div>
-                <h3 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-3">
-                  Depression Screening
-                </h3>
-                <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6 max-w-md">
-                  Evaluates mood patterns, motivation levels, and emotional well-being
-                  to detect signs of low mood or persistent sadness.
-                </p>
-
-                <div className="flex gap-6 sm:gap-8 lg:gap-10 mb-4 sm:mb-6">
-                  <div>
-                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-xs sm:text-sm text-mh-dark font-bold mb-1">Duration</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-700">10–12 minutes</p>
-                  </div>
-                  <div>
-                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-xs sm:text-sm text-mh-dark font-bold mb-1">Questions</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-700">20 questions</p>
-                  </div>
-                </div>
-
-                <button className="px-6 py-2 rounded-full bg-mh-gradient text-mh-white text-sm ">
-                  View Details
-                </button>
-              </div>
-
-              <div className="relative">
-                <span className="absolute top-4 left-4 bg-mh-white text-xs px-3 py-1 rounded-full shadow">
-                  Research-Based
-                </span>
-                <img
-                  src={f2}
-                  alt="Depression screening"
-                  className="rounded-xl sm:rounded-2xl w-full h-[200px] sm:h-[250px] lg:h-[300px] object-cover"
-                />
-              </div>
-
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-[#F7E3EE] rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 items-center">
-
-              <div>
-                <h3 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-3">
-                  ADHD / Attention Difficulty Screening
-                </h3>
-                <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6 max-w-md">
-                  Assesses focus, impulsivity, and attention-related challenges
-                  to support early understanding of ADHD-like symptoms.
-                </p>
-
-                <div className="flex gap-6 sm:gap-8 lg:gap-10 mb-4 sm:mb-6">
-                  <div>
-                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-xs sm:text-sm text-mh-dark font-bold mb-1">Duration</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-700">10–12 minutes</p>
-                  </div>
-                  <div>
-                    <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-xs sm:text-sm text-mh-dark font-bold mb-1">Questions</p>
-                    <p className="text-sm sm:text-base font-medium text-gray-700">20 questions</p>
-                  </div>
-                </div>
-
-                <button className="px-6 py-2 rounded-full bg-mh-gradient text-mh-white text-sm">
-                  View Details
-                </button>
-              </div>
-
-              <div className="relative">
-                <span className="absolute top-4 left-4 bg-mh-white text-xs px-3 py-1 rounded-full shadow">
-                  Research-Based
-                </span>
-                <img
-                  src={f3}
-                  alt="ADHD screening"
-                  className="rounded-xl sm:rounded-2xl w-full h-[200px] sm:h-[250px] lg:h-[300px] object-cover"
-                />
-              </div>
-
-            </div>
-
-          </div>
         </div>
       </section>
+
+      <section ref={sectionRef} className="relative h-screen bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-center">
+          <div className="relative w-full h-[70vh]" style={{ perspective: "1200px" }}>
+            {cards.map((card, i) => (
+              <div
+                key={i}
+                ref={(el) => (cardsRef.current[i] = el)}
+                className="rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 items-center"
+                style={{ background: card.bg }}
+              >
+                {/* Left */}
+                <div>
+                  <h3 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-3">
+                    {card.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6 max-w-md">
+                    {card.description}
+                  </p>
+
+                  <div className="flex gap-6 sm:gap-8 lg:gap-10 mb-4 sm:mb-6">
+                    <div>
+                      <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-xs sm:text-sm text-gray-900 font-bold mb-1">Duration</p>
+                      <p className="text-sm sm:text-base font-medium text-gray-700">{card.duration}</p>
+                    </div>
+                    <div>
+                      <svg className="w-4 h-4 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-xs sm:text-sm text-gray-900 font-bold mb-1">Questions</p>
+                      <p className="text-sm sm:text-base font-medium text-gray-700">{card.questions}</p>
+                    </div>
+                  </div>
+
+                  <button className="px-6 py-2 rounded-full bg-gray-900 text-white text-sm">
+                    View Details
+                  </button>
+                </div>
+
+                {/* Right */}
+                <div className="relative">
+                  <span className="absolute top-4 left-4 bg-white text-xs px-3 py-1 rounded-full shadow">
+                    Research-Based
+                  </span>
+                  <img
+                    src={card.image}
+                    alt={card.title}
+                    className="rounded-xl sm:rounded-2xl w-full h-[200px] sm:h-[250px] lg:h-[300px] object-cover"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section> 
 
       {/* Our Service Section  */}
 
