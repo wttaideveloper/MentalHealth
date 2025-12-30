@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAdminTests, getAdminTestById, updateTest, deleteTest, createTest } from '../../api/adminApi';
 import { showToast } from '../../utils/toast';
+import axiosInstance from '../../utils/config/axiosInstance';
 
 function AdminAssessments() {
   const [tests, setTests] = useState([]);
@@ -44,6 +45,8 @@ function AdminAssessments() {
     options: []
   });
   const [currentOption, setCurrentOption] = useState({ value: '', label: '' });
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imagePreview, setImagePreview] = useState('');
 
   useEffect(() => {
     fetchTests();
@@ -119,6 +122,50 @@ function AdminAssessments() {
     fetchTests();
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showToast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      setUploadingImage(true);
+      const response = await axiosInstance.post('/upload/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        setCreateForm({ ...createForm, imageUrl: response.data.data.imageUrl });
+        setImagePreview(response.data.data.imageUrl);
+        showToast.success('Image uploaded successfully!');
+      } else {
+        showToast.error(response.data.message || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Image upload error:', error);
+      showToast.error(error.response?.data?.message || 'Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
   const handleCreateTest = async (e) => {
     e.preventDefault();
     
@@ -177,6 +224,7 @@ function AdminAssessments() {
       scoringRules: {},
       riskRules: {}
     });
+    setImagePreview('');
     setCurrentQuestion({
       id: 'q1',
       text: '',
@@ -193,6 +241,12 @@ function AdminAssessments() {
   const addQuestion = () => {
     if (!currentQuestion.id || !currentQuestion.text.trim()) {
       showToast.error('Question ID and text are required');
+      return;
+    }
+
+    // Critical validation: If Is Critical is true, Help Text is required
+    if (currentQuestion.isCritical && !currentQuestion.helpText.trim()) {
+      showToast.error('Help Text is required for critical questions. Please provide safety/help information.');
       return;
     }
 
@@ -631,14 +685,69 @@ function AdminAssessments() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
-                      <input
-                        type="url"
-                        value={createForm.imageUrl}
-                        onChange={(e) => setCreateForm({ ...createForm, imageUrl: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
-                        placeholder="https://example.com/image.jpg"
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Assessment Image</label>
+                      <div className="space-y-3">
+                        {/* Image Preview */}
+                        {imagePreview && (
+                          <div className="relative w-full h-48 border border-gray-300 rounded-lg overflow-hidden bg-gray-100">
+                            <img
+                              src={imagePreview}
+                              alt="Preview"
+                              className="w-full h-full object-contain"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImagePreview('');
+                                setCreateForm({ ...createForm, imageUrl: '' });
+                              }}
+                              className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* File Upload Input */}
+                        <div className="flex items-center space-x-3">
+                          <label className="flex-1 cursor-pointer">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                              disabled={uploadingImage}
+                            />
+                            <div className={`w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-center hover:border-mh-green transition-colors ${uploadingImage ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                              {uploadingImage ? (
+                                <div className="flex items-center justify-center space-x-2">
+                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-mh-green"></div>
+                                  <span className="text-sm text-gray-600">Uploading...</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center space-y-2">
+                                  <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  <span className="text-sm text-gray-600">
+                                    {imagePreview ? 'Click to change image' : 'Click to upload image'}
+                                  </span>
+                                  <span className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</span>
+                                </div>
+                              )}
+                            </div>
+                          </label>
+                        </div>
+                        
+                        {/* Current Image URL (if exists) */}
+                        {createForm.imageUrl && !imagePreview && (
+                          <div className="text-xs text-gray-500">
+                            Current: {createForm.imageUrl}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center">
                       <label className="flex items-center space-x-2">
@@ -656,90 +765,176 @@ function AdminAssessments() {
 
                 {/* Questions Section */}
                 <div className="border-b border-gray-200 pb-4">
-                  <h4 className="text-lg font-semibold text-mh-dark mb-4">
-                    Questions ({createForm.schemaJson.questions.length})
-                  </h4>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-mh-dark">
+                      Questions ({createForm.schemaJson.questions.length})
+                    </h4>
+                    {createForm.schemaJson.questions.length > 0 && (
+                      <span className="text-sm text-gray-600">
+                        ✓ {createForm.schemaJson.questions.length} question{createForm.schemaJson.questions.length !== 1 ? 's' : ''} added
+                      </span>
+                    )}
+                  </div>
 
                   {/* Add Question Form */}
-                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <h5 className="text-sm font-semibold text-gray-700 mb-3">Add New Question</h5>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Question ID *</label>
-                          <input
-                            type="text"
-                            value={currentQuestion.id}
-                            onChange={(e) => setCurrentQuestion({ ...currentQuestion, id: e.target.value })}
-                            placeholder="e.g., q1"
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
-                          />
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 p-5 rounded-lg mb-4">
+                    <div className="mb-4">
+                      <h5 className="text-base font-semibold text-mh-dark mb-1">➕ Add New Question</h5>
+                      <p className="text-xs text-gray-600">
+                        Create a multiple-choice question with fixed score options (e.g., 0-3 scale)
+                      </p>
+                    </div>
+                    <div className="space-y-4">
+                      {/* Step 1: Basic Question Info */}
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className="bg-mh-green text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">1</span>
+                          <h6 className="text-sm font-semibold text-gray-800">Basic Information</h6>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">Order *</label>
-                          <input
-                            type="number"
-                            value={currentQuestion.order}
-                            onChange={(e) => setCurrentQuestion({ ...currentQuestion, order: Number(e.target.value) || 1 })}
-                            min="1"
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
-                          />
-                        </div>
-                        <div className="flex items-end">
-                          <div className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
-                            Radio (Multiple Choice)
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Question ID <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={currentQuestion.id}
+                              onChange={(e) => setCurrentQuestion({ ...currentQuestion, id: e.target.value })}
+                              placeholder="e.g., q1, q2, q3"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Unique identifier for this question</p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Display Order <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={currentQuestion.order}
+                              onChange={(e) => setCurrentQuestion({ ...currentQuestion, order: Number(e.target.value) || 1 })}
+                              min="1"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Order in which question appears (1, 2, 3...)</p>
                           </div>
                         </div>
-                        <div className="flex items-end space-x-3">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={currentQuestion.required}
-                              onChange={(e) => setCurrentQuestion({ ...currentQuestion, required: e.target.checked })}
-                              className="rounded border-gray-300 text-mh-green focus:ring-mh-green"
-                            />
-                            <span className="text-xs text-gray-700">Required</span>
-                          </label>
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={currentQuestion.isCritical}
-                              onChange={(e) => setCurrentQuestion({ ...currentQuestion, isCritical: e.target.checked })}
-                              className="rounded border-gray-300 text-red-600 focus:ring-red-600"
-                            />
-                            <span className="text-xs text-gray-700">Is Critical</span>
-                          </label>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Question Text *</label>
-                        <input
-                          type="text"
-                          value={currentQuestion.text}
-                          onChange={(e) => setCurrentQuestion({ ...currentQuestion, text: e.target.value })}
-                          placeholder="Enter the question text"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Help Text</label>
-                        <textarea
-                          value={currentQuestion.helpText}
-                          onChange={(e) => setCurrentQuestion({ ...currentQuestion, helpText: e.target.value })}
-                          placeholder="Optional help text for this question"
-                          rows="2"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
-                        />
                       </div>
 
-                      {/* Options with Fixed Scores (0-3, etc.) */}
-                      <div className="border-t border-gray-200 pt-3">
-                        <label className="block text-xs font-medium text-gray-700 mb-2">
-                          Options with Fixed Scores * (e.g., 0-3, 0-4, etc.)
-                        </label>
-                        <p className="text-xs text-gray-500 mb-2">
-                          Each option must have a numeric score value (0, 1, 2, 3, etc.)
-                        </p>
+                      {/* Step 2: Question Text */}
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className="bg-mh-green text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">2</span>
+                          <h6 className="text-sm font-semibold text-gray-800">Question Text</h6>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Question <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={currentQuestion.text}
+                            onChange={(e) => setCurrentQuestion({ ...currentQuestion, text: e.target.value })}
+                            placeholder="e.g., How often do you feel sad or hopeless?"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">The actual question text that users will see</p>
+                        </div>
+                      </div>
+
+                      {/* Step 3: Question Settings */}
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className="bg-mh-green text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">3</span>
+                          <h6 className="text-sm font-semibold text-gray-800">Question Settings</h6>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="flex items-center space-x-3">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={currentQuestion.required}
+                                onChange={(e) => setCurrentQuestion({ ...currentQuestion, required: e.target.checked })}
+                                className="rounded border-gray-300 text-mh-green focus:ring-mh-green w-4 h-4"
+                              />
+                              <span className="text-sm text-gray-700">Required Question</span>
+                            </label>
+                            <p className="text-xs text-gray-500">User must answer this question</p>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={currentQuestion.isCritical}
+                                onChange={(e) => setCurrentQuestion({ ...currentQuestion, isCritical: e.target.checked })}
+                                className="rounded border-gray-300 text-red-600 focus:ring-red-600 w-4 h-4"
+                              />
+                              <span className="text-sm font-semibold text-red-700">⚠️ Critical Question</span>
+                            </label>
+                            <p className="text-xs text-red-600">Requires help text for safety</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Step 4: Help Text (Required if Critical) */}
+                      <div className={`bg-white p-4 rounded-lg border-2 ${currentQuestion.isCritical ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}>
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className="bg-mh-green text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">4</span>
+                          <h6 className="text-sm font-semibold text-gray-800">
+                            Help Text {currentQuestion.isCritical && <span className="text-red-600">*</span>}
+                          </h6>
+                          {currentQuestion.isCritical && (
+                            <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-semibold">
+                              ⚠️ Required for Critical Questions
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <textarea
+                            value={currentQuestion.helpText}
+                            onChange={(e) => setCurrentQuestion({ ...currentQuestion, helpText: e.target.value })}
+                            placeholder={currentQuestion.isCritical 
+                              ? "⚠️ REQUIRED: Provide safety/help information for this critical question (e.g., 'If you're experiencing thoughts of self-harm, please reach out for immediate help...')"
+                              : "Optional: Additional help text or instructions for this question"
+                            }
+                            rows="3"
+                            className={`w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent ${
+                              currentQuestion.isCritical && !currentQuestion.helpText.trim()
+                                ? 'border-red-400 bg-red-50'
+                                : 'border-gray-300'
+                            }`}
+                          />
+                          {currentQuestion.isCritical ? (
+                            <p className="text-xs text-red-700 mt-1 font-medium">
+                              ⚠️ Critical questions must include help text for user safety and support guidance.
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Optional: Provide additional context or instructions for users
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Step 5: Answer Options with Scores */}
+                      <div className="bg-white p-4 rounded-lg border border-gray-200">
+                        <div className="flex items-center space-x-2 mb-3">
+                          <span className="bg-mh-green text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">5</span>
+                          <h6 className="text-sm font-semibold text-gray-800">
+                            Answer Options with Fixed Scores <span className="text-red-500">*</span>
+                          </h6>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                          <p className="text-xs font-medium text-blue-900 mb-1">
+                            📊 How it works:
+                          </p>
+                          <ul className="text-xs text-blue-800 space-y-1 list-disc list-inside">
+                            <li>Each option must have a numeric score (0, 1, 2, 3, etc.)</li>
+                            <li>Minimum 2 options required</li>
+                            <li>Scores are used for calculating the final assessment result</li>
+                            <li>Example: 0 = "Not at all", 1 = "Several days", 2 = "More than half", 3 = "Nearly every day"</li>
+                          </ul>
+                        </div>
                         <div className="space-y-2 mb-2">
                           {currentQuestion.options.map((opt, idx) => (
                             <div key={idx} className="flex items-center space-x-2 bg-white p-2 rounded border border-gray-200">
@@ -789,19 +984,36 @@ function AdminAssessments() {
                           </div>
                         </div>
                         {currentQuestion.options.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-2">
-                            Current scores: {currentQuestion.options.map(opt => opt.value).join(', ')}
-                          </p>
+                          <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded">
+                            <p className="text-xs font-medium text-green-800">
+                              ✓ {currentQuestion.options.length} option{currentQuestion.options.length !== 1 ? 's' : ''} added
+                            </p>
+                            <p className="text-xs text-green-700 mt-1">
+                              Scores: {currentQuestion.options.map(opt => opt.value).join(', ')}
+                            </p>
+                          </div>
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={addQuestion}
-                        className="w-full bg-mh-green text-white px-4 py-2 rounded-lg hover:bg-[#027a4f] transition-colors text-sm"
-                      >
-                        Add Question
-                      </button>
+                      {/* Add Question Button */}
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={addQuestion}
+                          disabled={!currentQuestion.id || !currentQuestion.text.trim() || currentQuestion.options.length < 2}
+                          className="w-full bg-mh-green text-white px-4 py-3 rounded-lg hover:bg-[#027a4f] transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                        >
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          <span>Add This Question</span>
+                        </button>
+                        {(!currentQuestion.id || !currentQuestion.text.trim() || currentQuestion.options.length < 2) && (
+                          <p className="text-xs text-gray-500 mt-2 text-center">
+                            Complete all required fields to add question
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 

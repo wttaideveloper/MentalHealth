@@ -18,6 +18,7 @@ const reportRoutes = require("./routes/report.routes");
 const adminRoutes = require("./routes/admin.routes");
 const adminReportRoutes = require("./routes/adminreports.routes");
 const adminTestsRoutes = require("./routes/admintests.routes");
+const uploadRoutes = require("./routes/upload.routes");
 
 async function createApp() {
   const app = express();
@@ -56,6 +57,10 @@ async function createApp() {
   app.use("/api/admin", adminRoutes);
   app.use("/api/admin/reports", adminReportRoutes);
   app.use("/api/admin/tests", adminTestsRoutes);
+  app.use("/api/upload", uploadRoutes);
+  
+  // Serve uploaded files
+  app.use("/uploads", express.static(path.join(__dirname, "../../uploads")));
 
   // Frontend serving
   if (cfg.NODE_ENV === "development") {
