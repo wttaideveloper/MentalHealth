@@ -18,7 +18,11 @@ exports.list = asyncHandler(async (req, res) => {
 
 exports.getById = asyncHandler(async (req, res) => {
   const testDoc = await Test.findById(req.params.testId);
-  if (!testDoc) return res.status(404).json({ success: false, message: "Test not found" });
-
+  if (!testDoc) {
+    return res.status(404).json({ success: false, message: "Test not found" });
+  }
+  
+  // Return full test data (including schemaJson, scoringRules, riskRules)
+  // These are needed when user is taking the test
   return ok(res, "Test", testDoc);
 });

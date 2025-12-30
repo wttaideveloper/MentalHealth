@@ -1,19 +1,89 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import f1 from '../../assets/images/f1.png';
-import f2 from '../../assets/images/f2.png';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { Star } from 'lucide-react';
 import Breadcrumb from '../../components/Breadcrumb';
+import { getAssessmentById, getAllAssessments } from '../../api/assessmentApi';
+import f1 from '../../assets/images/f1.png'; // Fallback image
+import f2 from '../../assets/images/f2.png'; // Fallback image
 
 function AssessmentDetailPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [activeFaq, setActiveFaq] = useState(0);
+  const [test, setTest] = useState(null);
+  const [featuredTests, setFeaturedTests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const location = useLocation();
   const navigate = useNavigate();
+  const { id: testId } = useParams();
   const isLoggedIn = location.pathname.startsWith('/user');
 
+  useEffect(() => {
+    if (testId) {
+      fetchTestDetails();
+      fetchFeaturedTests();
+    }
+  }, [testId]);
+
+  const fetchTestDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await getAssessmentById(testId);
+      if (response.success && response.data) {
+        setTest(response.data);
+      } else {
+        setError('Test not found');
+        toast.error('Test not found');
+      }
+    } catch (err) {
+      console.error('Error fetching test details:', err);
+      setError(err.response?.data?.message || 'Failed to load test details');
+      toast.error(err.response?.data?.message || 'Failed to load test details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFeaturedTests = async () => {
+    try {
+      // Fetch a few tests for the sidebar (excluding current test)
+      const response = await getAllAssessments({ limit: 3, popularity: 'true' });
+      if (response.success && response.data) {
+        // Filter out current test
+        const filtered = response.data.filter(t => t._id !== testId).slice(0, 2);
+        setFeaturedTests(filtered);
+      }
+    } catch (err) {
+      console.error('Error fetching featured tests:', err);
+      // Don't show error for featured tests, just leave empty
+    }
+  };
+
   const handleBuyNow = () => {
-    navigate('/payment');
+    if (test?.price === 0 || !test?.price) {
+      // Free test - navigate to start attempt
+      navigate(`/assessment-test/${testId}`);
+    } else {
+      navigate('/payment', { state: { testId } });
+    }
+  };
+
+  // Format price for display
+  const formatPrice = (price, mrp) => {
+    if (price === 0 || !price) return { current: 'Free', original: null };
+    if (mrp && mrp > price) {
+      return { current: `$${price}`, original: `$${mrp}` };
+    }
+    return { current: `$${price}`, original: null };
+  };
+
+  // Get image URL or fallback
+  const getImageUrl = (imageUrl) => {
+    if (imageUrl) return imageUrl;
+    return f2; // Fallback to default image
   };
 
   const faqs = [
@@ -26,10 +96,39 @@ function AssessmentDetailPage() {
     { q: 'Question text goes here', a: '' },
   ];
 
+  if (loading) {
+    return (
+      <div className="bg-white min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-mh-green"></div>
+          <p className="mt-4 text-gray-600">Loading assessment details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !test) {
+    return (
+      <div className="bg-white min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Test not found'}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-2 bg-mh-green text-white rounded-full hover:bg-green-700 transition-colors"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const priceInfo = formatPrice(test.price, test.mrp);
+
   return (
     <div className="bg-white min-h-screen">
       {/* Breadcrumb */}
-      <Breadcrumb isLoggedIn={isLoggedIn} assessmentName="Anxiety Assessment" />
+      <Breadcrumb isLoggedIn={isLoggedIn} assessmentName={test.title} />
 
       {/* TOP SECTION - Purple Background */}
       <div className="bg-[#D5DCEE] py-12">
@@ -39,36 +138,42 @@ function AssessmentDetailPage() {
             {/* Image */}
             <div>
               <img
-                src={f2}
-                alt="Assessment"
+                src={getImageUrl(test.imageUrl)}
+                alt={test.title}
                 className="rounded-2xl w-full h-[300px] object-cover"
+                onError={(e) => {
+                  e.target.src = f2;
+                }}
               />
             </div>
 
             {/* Info */}
             <div>
               <h1 className="text-3xl font-bold mb-4 text-gray-900">
-                Anxiety Assessment
+                {test.title}
               </h1>
 
               <p className="text-gray-600 mb-8 leading-relaxed">
-                A quick screening that helps identify symptoms of excessive worry,
-                tension, and emotional overwhelm.
+                {test.shortDescription || test.longDescription || 'No description available'}
               </p>
 
               <div className="mb-8">
                 <p className="text-sm text-gray-500 mb-1">Price</p>
                 <div className="flex items-center gap-4 mb-2">
-                  <span className="text-2xl font-bold text-gray-900">$150</span>
-                  <span className="text-lg line-through text-gray-400">$300</span>
+                  <span className="text-2xl font-bold text-gray-900">{priceInfo.current}</span>
+                  {priceInfo.original && (
+                    <span className="text-lg line-through text-gray-400">{priceInfo.original}</span>
+                  )}
                   <button 
                     onClick={handleBuyNow}
                     className="px-6 py-2 rounded-full bg-mh-gradient text-white font-semibold hover:bg-mh-green transition-colors"
                   >
-                    Buy Now
+                    {test.price === 0 ? 'Start Free' : 'Buy Now'}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">(inclusive of all taxes)</p>
+                {test.price > 0 && (
+                  <p className="text-xs text-gray-500">(inclusive of all taxes)</p>
+                )}
               </div>
 
               {/* Meta Info */}
@@ -79,14 +184,20 @@ function AssessmentDetailPage() {
                   </svg>
 
                   <p className="text-sm text-gray-800 font-semibold mb-1">Duration</p>
-                  <p className=" text-gray-500">10-12 minutes</p>
+                  <p className="text-gray-500">
+                    {test.durationMinutesMin && test.durationMinutesMax
+                      ? `${test.durationMinutesMin}-${test.durationMinutesMax} minutes`
+                      : test.durationMinutesMin
+                      ? `${test.durationMinutesMin} minutes`
+                      : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <svg className="w-4 h-4 text-mh-green mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p className="text-sm text-gray-800 font-semibold mb-1">Questions</p>
-                  <p className=" text-gray-500">20 Questions</p>
+                  <p className="text-gray-500">{test.questionsCount || 'N/A'} Questions</p>
                 </div>
               </div>
             </div>
@@ -103,34 +214,54 @@ function AssessmentDetailPage() {
             <h3 className="text-lg font-semibold mb-6 text-gray-900">Featured Assessments</h3>
 
             <div className="space-y-4">
-              {[
-                { img: f1, title: 'ADHD / Attention Difficulty Screening', price: '$150' },
-                { img: f2, title: 'Anxiety Assessment', price: '$150' }
-              ].map((item, i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-100 p-4">
-                  <div className="flex gap-4">
-                    <img src={item.img} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm mb-2 text-gray-900 leading-tight">
-                        {item.title}
-                      </h4>
-                      <p className="text-xs text-gray-500 mb-3">
-                        A quick screening that helps identify symptoms of excessive worry, tension, and emotional overwhelm.
-                      </p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-gray-900">{item.price}</span>
-                        <span className="text-xs text-gray-400 line-through">$300</span>
-                        <button 
-                          onClick={handleBuyNow}
-                          className="px-4 py-1.5 text-xs rounded-full bg-mh-gradient text-white font-semibold hover:bg-mh-green transition-colors"
-                        >
-                          Buy Now
-                        </button>
+              {featuredTests.length > 0 ? (
+                featuredTests.map((featuredTest) => {
+                  const featuredPriceInfo = formatPrice(featuredTest.price, featuredTest.mrp);
+                  return (
+                    <div
+                      key={featuredTest._id}
+                      onClick={() => navigate(`/assessment-detail/${featuredTest._id}`)}
+                      className="bg-white rounded-xl border border-gray-100 p-4 cursor-pointer hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex gap-4">
+                        <img
+                          src={getImageUrl(featuredTest.imageUrl)}
+                          alt={featuredTest.title}
+                          className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                          onError={(e) => {
+                            e.target.src = f1;
+                          }}
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm mb-2 text-gray-900 leading-tight">
+                            {featuredTest.title}
+                          </h4>
+                          <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+                            {featuredTest.shortDescription || 'No description available'}
+                          </p>
+                          <div className="flex justify-between items-center gap-2">
+                            <span className="text-sm font-semibold text-gray-900">{featuredPriceInfo.current}</span>
+                            {featuredPriceInfo.original && (
+                              <span className="text-xs text-gray-400 line-through">{featuredPriceInfo.original}</span>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/assessment-detail/${featuredTest._id}`);
+                              }}
+                              className="px-4 py-1.5 text-xs rounded-full bg-mh-gradient text-white font-semibold hover:bg-mh-green transition-colors whitespace-nowrap"
+                            >
+                              {featuredTest.price === 0 ? 'Start' : 'View'}
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })
+              ) : (
+                <p className="text-sm text-gray-500">No featured assessments available</p>
+              )}
             </div>
           </div>
 
@@ -161,14 +292,9 @@ function AssessmentDetailPage() {
             {activeTab === 'overview' && (
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-gray-900">About Assessment</h3>
-                <p className="text-gray-600 mb-6 leading-relaxed">
-                  A quick screening that helps identify symptoms of excessive worry,
-                  tension, and emotional overwhelm.
-                </p>
-                <p className="text-gray-600 leading-relaxed">
-                  A quick screening that helps identify symptoms of excessive worry,
-                  tension, and emotional overwhelm.
-                </p>
+                <div className="text-gray-600 leading-relaxed whitespace-pre-line">
+                  {test.longDescription || test.shortDescription || 'No detailed description available for this assessment.'}
+                </div>
               </div>
             )}
 
@@ -275,18 +401,22 @@ function AssessmentDetailPage() {
       <div className="border-t border-gray-200 bg-white py-4 sticky bottom-0 shadow-lg">
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div>
-            <span className="font-bold text-lg text-gray-900">Anxiety Assessment</span>
+            <span className="font-bold text-lg text-gray-900">{test.title}</span>
             <div className="flex items-center gap-2 mt-1">
-              <span className="font-semibold text-gray-900">$150</span>
-              <span className="text-sm line-through text-gray-400">$300</span>
-              <span className="text-xs text-gray-500">(inclusive of all taxes)</span>
+              <span className="font-semibold text-gray-900">{priceInfo.current}</span>
+              {priceInfo.original && (
+                <span className="text-sm line-through text-gray-400">{priceInfo.original}</span>
+              )}
+              {test.price > 0 && (
+                <span className="text-xs text-gray-500">(inclusive of all taxes)</span>
+              )}
             </div>
           </div>
           <button 
             onClick={handleBuyNow}
             className="px-8 py-3 rounded-full bg-mh-gradient text-white font-semibold hover:bg-mh-green transition-colors"
           >
-            Buy Now
+            {test.price === 0 ? 'Start Free' : 'Buy Now'}
           </button>
         </div>
       </div>
