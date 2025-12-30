@@ -131,7 +131,7 @@ function AllAssessmentsPage() {
           {/* Search + Filter */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="relative flex-1 sm:flex-initial">
-              <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-mh-green" size={16} />
+              <Search className="hidden sm:block absolute left-3 top-1/2 transform -translate-y-1/2 text-mh-green" size={16} />
               <input
                 type="text"
                 placeholder="Search..."
@@ -142,7 +142,7 @@ function AllAssessmentsPage() {
                     handleSearch(e);
                   }
                 }}
-                className="input-field pl-10 sm:pl-12 pr-8 sm:pr-10 w-full sm:w-64 text-sm"
+                className="input-field pl-4 sm:pl-11 pr-8 w-full sm:w-64 text-sm"
               />
               {searchQuery && (
                 <button
@@ -150,7 +150,7 @@ function AllAssessmentsPage() {
                     setSearchQuery('');
                     fetchAssessments();
                   }}
-                  className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
                   title="Clear search"
                 >
                   ✕
@@ -173,7 +173,7 @@ function AllAssessmentsPage() {
                 onClick={() => setShowFilterDropdown(!showFilterDropdown)}
                 className="input-field px-3 sm:px-4 py-2 rounded-xl border bg-mh-white flex items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm hover:bg-gray-50 transition-colors min-w-[100px] sm:min-w-[120px] h-[42px] sm:h-[44px]"
               >
-                <SlidersHorizontal size={14} className="sm:w-4 sm:h-4 text-mh-green" />
+                <SlidersHorizontal size={12} className="text-mh-green" />
                 <span className="hidden xs:inline">{getFilterLabel()}</span>
                 <span className="xs:hidden">
                   {filterType === 'all' ? 'All' : filterType === 'free' ? 'Free' : 'Paid'}
