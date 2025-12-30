@@ -18,5 +18,5 @@ const testAttemptSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const TestAttempt = mongoose.model("TestAttempt", testAttemptSchema);
+const TestAttempt = mongoose.models.TestAttempt || mongoose.model("TestAttempt", testAttemptSchema);
 module.exports = { TestAttempt };

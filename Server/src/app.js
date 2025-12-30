@@ -15,7 +15,9 @@ const resultRoutes = require("./routes/result.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const invoiceRoutes = require("./routes/invoice.routes");
 const reportRoutes = require("./routes/report.routes");
+const adminRoutes = require("./routes/admin.routes");
 const adminReportRoutes = require("./routes/adminreports.routes");
+const adminTestsRoutes = require("./routes/admintests.routes");
 
 async function createApp() {
   const app = express();
@@ -51,7 +53,9 @@ async function createApp() {
   app.use("/api/payments", paymentRoutes);
   app.use("/api/invoices", invoiceRoutes);
   app.use("/api/reports", reportRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/api/admin/reports", adminReportRoutes);
+  app.use("/api/admin/tests", adminTestsRoutes);
 
   // Frontend serving
   if (cfg.NODE_ENV === "development") {

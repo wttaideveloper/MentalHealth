@@ -1,8 +1,8 @@
-const { Purchase } = require("../models/Purchase");
-const { TestAttempt } = require("../models/TestAttempt");
+const { Purchase } = require("../Model/Purchase");
+const { TestAttempt } = require("../Model/Testattempt");
 
-const { asyncHandler } = require("../utils/asyncHandler");
-const { ok } = require("../utils/response");
+const { asyncHandler } = require("../utils/Asynchandler");
+const { ok } = require("../utils/Response");
 const { toCsv } = require("../services/csv.service");
 
 exports.summary = asyncHandler(async (req, res) => {

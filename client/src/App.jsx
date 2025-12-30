@@ -29,6 +29,15 @@ import AssessmentViaLinkTestPage from './pages/assessmentViaLink/AssessmentViaLi
 import DashboardPage from './pages/dashboard/DashboardPage';
 import PaymentPage from './pages/payment/PaymentPage';
 import NotFoundPage from './pages/NotFoundPage';
+// Admin Pages
+import AdminLoginPage from './pages/admin/AdminLoginPage';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminReports from './pages/admin/AdminReports';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminTests from './pages/admin/AdminTests';
+import AdminSettings from './pages/admin/AdminSettings';
+import AdminRoute from './components/AdminRoute';
+import AdminLayout from './components/AdminLayout';
 
 function App() {
   return (
@@ -97,6 +106,59 @@ function App() {
         {/* Assessment & Payment Routes */}
         <Route path="/dashboard" element={<Layout isLoggedIn={true}><DashboardPage /></Layout>} />
         <Route path="/payment" element={<Layout isLoggedIn={true}><PaymentPage /></Layout>} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin-login" element={<Layout showHeaderFooter={false}><AdminLoginPage /></Layout>} />
+        <Route 
+          path="/admin/dashboard" 
+          element={
+            <AdminRoute>
+              <AdminLayout>
+                <AdminDashboard />
+              </AdminLayout>
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/admin/reports" 
+          element={
+            <AdminRoute>
+              <AdminLayout>
+                <AdminReports />
+              </AdminLayout>
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/admin/users" 
+          element={
+            <AdminRoute>
+              <AdminLayout>
+                <AdminUsers />
+              </AdminLayout>
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/admin/tests" 
+          element={
+            <AdminRoute>
+              <AdminLayout>
+                <AdminTests />
+              </AdminLayout>
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/admin/settings" 
+          element={
+            <AdminRoute>
+              <AdminLayout>
+                <AdminSettings />
+              </AdminLayout>
+            </AdminRoute>
+          } 
+        />
         
         <Route path="*" element={<Layout><NotFoundPage /></Layout>} />
       </Routes>
