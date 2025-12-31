@@ -26,4 +26,20 @@ router.get(
   adminReportsController.usageCsv
 );
 
+// Get purchases data as JSON (for viewing)
+router.get(
+  "/purchases",
+  authMiddleware,
+  requireRole("admin"),
+  adminReportsController.purchasesData
+);
+
+// Get usage/test attempts data as JSON (for viewing)
+router.get(
+  "/usage",
+  authMiddleware,
+  requireRole("admin"),
+  adminReportsController.usageData
+);
+
 module.exports = router;

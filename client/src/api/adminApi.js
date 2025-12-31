@@ -47,6 +47,26 @@ export const downloadUsageCsv = async () => {
   return response.data;
 };
 
+/**
+ * Get purchases data for viewing (admin only)
+ * @param {Object} params - Query parameters (page, limit)
+ * @returns {Promise} API response with purchases data
+ */
+export const getPurchasesData = async (params = {}) => {
+  const response = await axiosInstance.get('/admin/reports/purchases', { params });
+  return response.data;
+};
+
+/**
+ * Get usage/test attempts data for viewing (admin only)
+ * @param {Object} params - Query parameters (page, limit)
+ * @returns {Promise} API response with usage data
+ */
+export const getUsageData = async (params = {}) => {
+  const response = await axiosInstance.get('/admin/reports/usage', { params });
+  return response.data;
+};
+
 // ============================================================================
 // ASSESSMENT LINK APIs (Admin only)
 // ============================================================================
