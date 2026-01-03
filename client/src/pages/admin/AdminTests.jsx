@@ -60,10 +60,43 @@ function AdminAssessments() {
   const [imagePreview, setImagePreview] = useState('');
   const [jsonUploadError, setJsonUploadError] = useState('');
   const [validationErrors, setValidationErrors] = useState({ errors: [], warnings: [], questionErrors: {} });
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
+  const [newCategoryValue, setNewCategoryValue] = useState('');
 
   useEffect(() => {
     fetchTests();
   }, [page, search, isActiveFilter]);
+
+  // Fetch categories when component mounts
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  // Fetch categories when create modal opens
+  useEffect(() => {
+    if (showCreateModal) {
+      fetchCategories();
+    }
+  }, [showCreateModal]);
+
+  const fetchCategories = async () => {
+    try {
+      // Fetch all tests (including inactive) to get all categories
+      const response = await getAdminTests({ page: 1, limit: 1000, isActive: 'all' });
+      if (response.success && response.data && response.data.tests) {
+        // Extract unique categories
+        const categories = [...new Set(
+          response.data.tests
+            .map(test => test.category)
+            .filter(cat => cat && cat.trim() !== '')
+        )].sort();
+        setAvailableCategories(categories);
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
 
   const fetchTests = async () => {
     try {
@@ -105,10 +138,17 @@ function AdminAssessments() {
       const response = await getAdminTestById(testId);
       if (response.success && response.data) {
         const testData = response.data;
+        const testCategory = testData.category || '';
+        
+        // Ensure the test's category is in the available categories list
+        if (testCategory && testCategory.trim() !== '' && !availableCategories.includes(testCategory)) {
+          setAvailableCategories([...availableCategories, testCategory].sort());
+        }
+        
         // Populate form with existing test data
         setCreateForm({
           title: testData.title || '',
-          category: testData.category || '',
+          category: testCategory,
           shortDescription: testData.shortDescription || '',
           longDescription: testData.longDescription || '',
           durationMinutesMin: testData.durationMinutesMin || 10,
@@ -128,6 +168,8 @@ function AdminAssessments() {
         });
         setImagePreview(testData.imageUrl || '');
         setEditingTestId(testId);
+        setIsAddingNewCategory(false);
+        setNewCategoryValue('');
         // Reset current question form for adding new questions
         const questions = testData.schemaJson?.questions || [];
         const nextId = `q${questions.length + 1}`;
@@ -400,6 +442,8 @@ function AdminAssessments() {
     setCurrentCondition({ questionId: '', operator: 'equals', value: '' });
     setJsonUploadError('');
     setValidationErrors({ errors: [], warnings: [], questionErrors: {} });
+    setIsAddingNewCategory(false);
+    setNewCategoryValue('');
   };
 
   const buildShowIfCondition = () => {
@@ -1045,13 +1089,94 @@ function AdminAssessments() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                      <input
-                        type="text"
-                        value={createForm.category}
-                        onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
-                        placeholder="e.g., Mental Health"
-                      />
+                      {!isAddingNewCategory ? (
+                        <div className="space-y-2">
+                          <select
+                            value={createForm.category}
+                            onChange={(e) => {
+                              const selectedValue = e.target.value;
+                              if (selectedValue === '__add_new__') {
+                                setIsAddingNewCategory(true);
+                                setNewCategoryValue('');
+                              } else {
+                                setCreateForm({ ...createForm, category: selectedValue });
+                              }
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
+                          >
+                            <option value="">Select a category...</option>
+                            {availableCategories.map((category) => (
+                              <option key={category} value={category}>
+                                {category}
+                              </option>
+                            ))}
+                            <option value="__add_new__" className="font-semibold text-mh-green">
+                              + Add New Category
+                            </option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={newCategoryValue}
+                              onChange={(e) => setNewCategoryValue(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (newCategoryValue.trim()) {
+                                    setCreateForm({ ...createForm, category: newCategoryValue.trim() });
+                                    // Add to available categories if not already present
+                                    if (!availableCategories.includes(newCategoryValue.trim())) {
+                                      setAvailableCategories([...availableCategories, newCategoryValue.trim()].sort());
+                                    }
+                                    setIsAddingNewCategory(false);
+                                    setNewCategoryValue('');
+                                  }
+                                }
+                              }}
+                              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
+                              placeholder="Enter new category name..."
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (newCategoryValue.trim()) {
+                                  setCreateForm({ ...createForm, category: newCategoryValue.trim() });
+                                  // Add to available categories if not already present
+                                  if (!availableCategories.includes(newCategoryValue.trim())) {
+                                    setAvailableCategories([...availableCategories, newCategoryValue.trim()].sort());
+                                  }
+                                  setIsAddingNewCategory(false);
+                                  setNewCategoryValue('');
+                                }
+                              }}
+                              className="px-4 py-2 bg-mh-gradient text-white rounded-lg hover:opacity-90 transition-colors whitespace-nowrap"
+                            >
+                              Add
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAddingNewCategory(false);
+                                setNewCategoryValue('');
+                                // Restore previous category if it exists in the list
+                                if (createForm.category && availableCategories.includes(createForm.category)) {
+                                  // Keep the current category
+                                } else {
+                                  setCreateForm({ ...createForm, category: '' });
+                                }
+                              }}
+                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors whitespace-nowrap"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                          <p className="text-xs text-gray-500">Press Enter or click Add to save the new category</p>
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Tag</label>

@@ -17,13 +17,36 @@ function AllAssessmentsPage() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); // 'all', 'free', 'paid'
+  const [selectedCategory, setSelectedCategory] = useState(''); // Category filter
+  const [availableCategories, setAvailableCategories] = useState([]); // Available categories
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const dropdownRef = useRef(null);
+
+  // Fetch all assessments once to extract categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await getAllAssessments({});
+        if (response.success && Array.isArray(response.data)) {
+          // Extract unique categories from assessments
+          const categories = [...new Set(
+            response.data
+              .map(test => test.category)
+              .filter(cat => cat && cat.trim() !== '') // Filter out empty categories
+          )].sort();
+          setAvailableCategories(categories);
+        }
+      } catch (err) {
+        console.error('Error fetching categories:', err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // Fetch assessments on mount and when filters change
   useEffect(() => {
     fetchAssessments();
-  }, [filterType, searchQuery]);
+  }, [filterType, searchQuery, selectedCategory]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -48,6 +71,9 @@ function AllAssessmentsPage() {
         params.free = 'true';
       } else if (filterType === 'paid') {
         params.paid = 'true';
+      }
+      if (selectedCategory) {
+        params.category = selectedCategory;
       }
       
       const response = await getAllAssessments(params);
@@ -185,6 +211,24 @@ function AllAssessmentsPage() {
               </button>
             )}
 
+            {/* Category Filter Dropdown */}
+            {availableCategories.length > 0 && (
+              <div className="relative">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="input-field px-3 sm:px-4 py-2 rounded-xl border bg-mh-white text-xs sm:text-sm hover:bg-gray-50 transition-colors min-w-[120px] sm:min-w-[150px] h-[42px] sm:h-[44px] cursor-pointer"
+                >
+                  <option value="">All Categories</option>
+                  {availableCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Filter Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -248,16 +292,19 @@ function AllAssessmentsPage() {
         {!loading && !error && assessments.length === 0 && (
           <div className="text-center py-20">
             <p className="text-gray-600 text-lg mb-4">No assessments found</p>
-            {searchQuery && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  fetchAssessments();
-                }}
-                className="text-mh-green hover:underline"
-              >
-                Clear search
-              </button>
+            {(searchQuery || selectedCategory) && (
+              <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedCategory('');
+                    fetchAssessments();
+                  }}
+                  className="text-mh-green hover:underline"
+                >
+                  Clear filters
+                </button>
+              </div>
             )}
           </div>
         )}
