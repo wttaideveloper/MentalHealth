@@ -58,7 +58,9 @@ function AssessmentTestPage() {
     toast('Time expired. Submitting assessment...', { icon: '⏱️' });
     
     try {
-      const response = await submitAttempt(attempt._id, answers);
+      // Ensure answers is always an object
+      const answersObj = answers && typeof answers === 'object' ? answers : {};
+      const response = await submitAttempt(attempt._id, answersObj);
       if (response.success && response.data?.result) {
         toast.success('Assessment auto-submitted due to time limit');
         navigate(`/test-result/${response.data.result._id}`);
@@ -169,7 +171,9 @@ function AssessmentTestPage() {
       if (!attempt?._id) return;
       
       try {
-        await saveAttempt(attempt._id, answersToSave);
+        // Ensure answers is always an object, even if empty
+        const answersObj = answersToSave && typeof answersToSave === 'object' ? answersToSave : {};
+        await saveAttempt(attempt._id, answersObj);
         // Silently save, no toast to avoid distraction
       } catch (err) {
         console.error('Autosave failed:', err);
@@ -191,7 +195,9 @@ function AssessmentTestPage() {
     
     try {
       setSaving(true);
-      await saveAttempt(attempt._id, answers);
+      // Ensure answers is always an object
+      const answersObj = answers && typeof answers === 'object' ? answers : {};
+      await saveAttempt(attempt._id, answersObj);
       toast.success('Progress saved successfully');
       navigate('/my-assessments');
     } catch (err) {
@@ -231,7 +237,9 @@ function AssessmentTestPage() {
     
     try {
       setSubmitting(true);
-      const response = await submitAttempt(attempt._id, answers);
+      // Ensure answers is always an object
+      const answersObj = answers && typeof answers === 'object' ? answers : {};
+      const response = await submitAttempt(attempt._id, answersObj);
       
       if (response.success && response.data?.result) {
         toast.success('Assessment submitted successfully!');

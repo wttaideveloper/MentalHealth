@@ -45,14 +45,27 @@ export function parseQuestions(schemaJson) {
 export function getQuestionType(question) {
   if (!question) return 'radio';
   
-  // Check explicit type field
-  if (question.type) return question.type;
+  // Check explicit type field (case-insensitive)
+  if (question.type) {
+    const type = String(question.type).toLowerCase().trim();
+    // Map common variations
+    if (type === 'bool' || type === 'yesno' || type === 'yes/no') return 'boolean';
+    if (type === 'number' || type === 'int' || type === 'integer') return 'numeric';
+    if (type === 'string' || type === 'input') return 'text';
+    if (type === 'multiline' || type === 'longtext' || type === 'long_text') return 'textarea';
+    return type;
+  }
   
   // Infer from options
   if (question.options) {
     if (question.multiple) return 'checkbox';
     return 'radio';
   }
+  
+  // Infer from other fields
+  if (question.inputType === 'number' || question.inputType === 'numeric') return 'numeric';
+  if (question.inputType === 'text' || question.inputType === 'string') return 'text';
+  if (question.inputType === 'textarea' || question.inputType === 'multiline') return 'textarea';
   
   // Default to radio
   return 'radio';

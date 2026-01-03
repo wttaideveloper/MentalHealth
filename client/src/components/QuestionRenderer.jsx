@@ -342,6 +342,69 @@ function QuestionRenderer({ question, index, answers, onAnswerChange }) {
   const subQuestions = getSubQuestions(question);
   const answer = answers[questionId] || '';
 
+  // Debug logging (remove in production if needed)
+  if (process.env.NODE_ENV === 'development') {
+    if (!question.type && !question.options) {
+      console.warn('Question without type or options:', { questionId, questionText, question });
+    }
+  }
+
+  // Render boolean (yes/no) question - check this FIRST before radio, as boolean might have options too
+  if (questionType === 'boolean') {
+    return (
+      <BooleanQuestion
+        question={question}
+        questionId={questionId}
+        questionText={questionText}
+        index={index}
+        answer={answer}
+        onAnswerChange={onAnswerChange}
+      />
+    );
+  }
+
+  // Render numeric question - check before other types
+  if (questionType === 'numeric') {
+    return (
+      <NumericQuestion
+        question={question}
+        questionId={questionId}
+        questionText={questionText}
+        index={index}
+        answer={answer}
+        onAnswerChange={onAnswerChange}
+      />
+    );
+  }
+
+  // Render text (single-line) question
+  if (questionType === 'text') {
+    return (
+      <TextQuestion
+        question={question}
+        questionId={questionId}
+        questionText={questionText}
+        index={index}
+        answer={answer}
+        onAnswerChange={onAnswerChange}
+      />
+    );
+  }
+
+  // Render textarea (multi-line) question
+  if (questionType === 'textarea') {
+    return (
+      <TextareaQuestion
+        question={question}
+        questionId={questionId}
+        questionText={questionText}
+        index={index}
+        answer={answer}
+        onAnswerChange={onAnswerChange}
+      />
+    );
+  }
+
   // Render radio button question
   if (questionType === 'radio' && options.length > 0) {
     return (
@@ -408,62 +471,6 @@ function QuestionRenderer({ question, index, answers, onAnswerChange }) {
         answer={answer}
         onAnswerChange={onAnswerChange}
         options={options}
-      />
-    );
-  }
-
-  // Render boolean (yes/no) question
-  if (questionType === 'boolean') {
-    return (
-      <BooleanQuestion
-        question={question}
-        questionId={questionId}
-        questionText={questionText}
-        index={index}
-        answer={answer}
-        onAnswerChange={onAnswerChange}
-      />
-    );
-  }
-
-  // Render numeric question
-  if (questionType === 'numeric') {
-    return (
-      <NumericQuestion
-        question={question}
-        questionId={questionId}
-        questionText={questionText}
-        index={index}
-        answer={answer}
-        onAnswerChange={onAnswerChange}
-      />
-    );
-  }
-
-  // Render text (single-line) question
-  if (questionType === 'text') {
-    return (
-      <TextQuestion
-        question={question}
-        questionId={questionId}
-        questionText={questionText}
-        index={index}
-        answer={answer}
-        onAnswerChange={onAnswerChange}
-      />
-    );
-  }
-
-  // Render textarea (multi-line) question
-  if (questionType === 'textarea') {
-    return (
-      <TextareaQuestion
-        question={question}
-        questionId={questionId}
-        questionText={questionText}
-        index={index}
-        answer={answer}
-        onAnswerChange={onAnswerChange}
       />
     );
   }
