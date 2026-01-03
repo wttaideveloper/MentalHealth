@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getAdminTests, getAdminTestById, updateTest, deleteTest, createTest } from '../../api/adminApi';
 import { showToast } from '../../utils/toast';
 import axiosInstance from '../../utils/config/axiosInstance';
+import { validateTestData } from '../../utils/schemaValidator';
 
 function AdminAssessments() {
   const [tests, setTests] = useState([]);
@@ -45,12 +46,20 @@ function AdminAssessments() {
     order: 1,
     isCritical: false,
     helpText: '',
-    options: []
+    options: [],
+    show_if: null // Branching condition
+  });
+  const [showIfMode, setShowIfMode] = useState('none'); // 'none', 'simple'
+  const [currentCondition, setCurrentCondition] = useState({
+    questionId: '',
+    operator: 'equals',
+    value: ''
   });
   const [currentOption, setCurrentOption] = useState({ value: '', label: '' });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imagePreview, setImagePreview] = useState('');
   const [jsonUploadError, setJsonUploadError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({ errors: [], warnings: [], questionErrors: {} });
 
   useEffect(() => {
     fetchTests();
@@ -263,15 +272,22 @@ function AdminAssessments() {
   const handleCreateTest = async (e) => {
     e.preventDefault();
     
-    // Validation
-    if (!createForm.title.trim()) {
-      showToast.error('Title is required');
+    // Comprehensive validation
+    const validation = validateTestData(createForm);
+    setValidationErrors(validation);
+
+    if (!validation.valid) {
+      // Show first error as toast
+      if (validation.errors.length > 0) {
+        showToast.error(validation.errors[0]);
+      }
+      // Scroll to first error if possible
       return;
     }
-    
-    if (!createForm.schemaJson.questions || createForm.schemaJson.questions.length === 0) {
-      showToast.error('At least one question is required');
-      return;
+
+    // Show warnings if any
+    if (validation.warnings.length > 0) {
+      showToast.warning(`${validation.warnings.length} warning(s) found. Check the form for details.`);
     }
 
     // Check if user is still authenticated
@@ -328,7 +344,17 @@ function AdminAssessments() {
           window.location.href = '/admin-login';
         }, 2000);
       } else {
-        showToast.error(error.response?.data?.message || `Failed to ${editingTestId ? 'update' : 'create'} test`);
+        // Handle validation errors from backend
+        if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+          setValidationErrors({
+            errors: error.response.data.errors,
+            warnings: error.response.data.warnings || [],
+            questionErrors: {}
+          });
+          showToast.error('Schema validation failed. Please check the errors below.');
+        } else {
+          showToast.error(error.response?.data?.message || `Failed to ${editingTestId ? 'update' : 'create'} test`);
+        }
       }
     } finally {
       setCreating(false);
@@ -366,11 +392,30 @@ function AdminAssessments() {
       order: 1,
       isCritical: false,
       helpText: '',
-      options: []
+      options: [],
+      show_if: null
     });
     setCurrentOption({ value: '', label: '' });
+    setShowIfMode('none');
+    setCurrentCondition({ questionId: '', operator: 'equals', value: '' });
     setJsonUploadError('');
+    setValidationErrors({ errors: [], warnings: [], questionErrors: {} });
   };
+
+  const buildShowIfCondition = () => {
+    if (showIfMode === 'none') return null;
+    
+    if (showIfMode === 'simple') {
+      if (!currentCondition.questionId || currentCondition.value === '') return null;
+      return {
+        questionId: currentCondition.questionId,
+        equals: currentCondition.value
+      };
+    }
+    
+    return null;
+  };
+
 
   const addQuestion = () => {
     if (!currentQuestion.id || !currentQuestion.text.trim()) {
@@ -400,7 +445,8 @@ function AdminAssessments() {
 
     const newQuestion = {
       ...currentQuestion,
-      options: [...currentQuestion.options] // Always radio, so always include options
+      options: [...currentQuestion.options], // Always radio, so always include options
+      show_if: buildShowIfCondition()
     };
 
     // Add question and sort by order
@@ -425,10 +471,17 @@ function AdminAssessments() {
       order: nextOrder,
       isCritical: false,
       helpText: '',
-      options: []
+      options: [],
+      show_if: null
     });
     setCurrentOption({ value: '', label: '' });
+    setShowIfMode('none');
+    setCurrentCondition({ questionId: '', operator: 'equals', value: '' });
     showToast.success('Question added!');
+    
+    // Trigger validation after adding question
+    const validation = validateTestData(createForm);
+    setValidationErrors(validation);
   };
 
   const addOption = () => {
@@ -447,14 +500,34 @@ function AdminAssessments() {
 
   const removeQuestion = (index) => {
     const newQuestions = createForm.schemaJson.questions.filter((_, i) => i !== index);
-    setCreateForm({
+    const updatedForm = {
       ...createForm,
       schemaJson: {
         ...createForm.schemaJson,
         questions: newQuestions
       }
-    });
+    };
+    setCreateForm(updatedForm);
     showToast.success('Question removed');
+    
+    // Trigger validation after removing question
+    const validation = validateTestData(updatedForm);
+    setValidationErrors(validation);
+  };
+
+  const handleValidateSchema = () => {
+    const validation = validateTestData(createForm);
+    setValidationErrors(validation);
+    
+    if (validation.valid) {
+      if (validation.warnings.length > 0) {
+        showToast.warning(`Schema is valid but has ${validation.warnings.length} warning(s)`);
+      } else {
+        showToast.success('Schema is valid! ✓');
+      }
+    } else {
+      showToast.error(`Schema validation failed: ${validation.errors.length} error(s) found`);
+    }
   };
 
   const removeOption = (optionIndex) => {
@@ -652,6 +725,23 @@ function AdminAssessments() {
             { value: 3, label: "Neutral" },
             { value: 4, label: "Good" },
             { value: 5, label: "Very Good" }
+          ]
+        },
+        {
+          id: "q4",
+          text: "This question only appears if q1 equals 3",
+          type: "radio",
+          required: false,
+          order: 4,
+          isCritical: false,
+          helpText: "",
+          show_if: {
+            questionId: "q1",
+            equals: 3
+          },
+          options: [
+            { value: 0, label: "No" },
+            { value: 1, label: "Yes" }
           ]
         }
       ]
@@ -1162,13 +1252,88 @@ function AdminAssessments() {
                         </span>
                       </label>
                       
+                      {/* Validate Schema Button */}
+                      <button
+                        type="button"
+                        onClick={handleValidateSchema}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-sm"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Validate Schema
+                      </button>
+                      
                       {createForm.schemaJson.questions.length > 0 && (
-                        <span className="text-sm text-gray-600">
-                          ✓ {createForm.schemaJson.questions.length} question{createForm.schemaJson.questions.length !== 1 ? 's' : ''} added
+                        <span className={`text-sm ${
+                          validationErrors.errors.length > 0 
+                            ? 'text-red-600' 
+                            : validationErrors.warnings.length > 0 
+                            ? 'text-yellow-600' 
+                            : 'text-gray-600'
+                        }`}>
+                          {validationErrors.errors.length > 0 
+                            ? `⚠️ ${validationErrors.errors.length} error(s)`
+                            : validationErrors.warnings.length > 0
+                            ? `⚠️ ${validationErrors.warnings.length} warning(s)`
+                            : `✓ ${createForm.schemaJson.questions.length} question${createForm.schemaJson.questions.length !== 1 ? 's' : ''} added`}
                         </span>
                       )}
                     </div>
                   </div>
+
+                  {/* Validation Errors Display */}
+                  {validationErrors.errors.length > 0 && (
+                    <div className="mb-4 p-4 bg-red-50 border-2 border-red-300 rounded-lg">
+                      <div className="flex items-start mb-2">
+                        <svg className="w-5 h-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-red-800 mb-2">Schema Validation Errors ({validationErrors.errors.length}):</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            {validationErrors.errors.slice(0, 5).map((error, idx) => (
+                              <li key={idx} className="text-xs text-red-700">{error}</li>
+                            ))}
+                            {validationErrors.errors.length > 5 && (
+                              <li className="text-xs text-red-600 italic">... and {validationErrors.errors.length - 5} more error(s)</li>
+                            )}
+                          </ul>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setValidationErrors({ errors: [], warnings: [], questionErrors: {} })}
+                          className="ml-2 text-red-600 hover:text-red-800"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Validation Warnings Display */}
+                  {validationErrors.warnings.length > 0 && (
+                    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start">
+                        <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-800 mb-1">Warnings ({validationErrors.warnings.length}):</p>
+                          <ul className="list-disc list-inside space-y-1">
+                            {validationErrors.warnings.slice(0, 3).map((warning, idx) => (
+                              <li key={idx} className="text-xs text-yellow-700">{warning}</li>
+                            ))}
+                            {validationErrors.warnings.length > 3 && (
+                              <li className="text-xs text-yellow-600 italic">... and {validationErrors.warnings.length - 3} more warning(s)</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* JSON Upload Error Display */}
                   {jsonUploadError && (
@@ -1435,6 +1600,95 @@ function AdminAssessments() {
                         )}
                       </div>
 
+                      {/* Show If Condition Section */}
+                      <div className="border-t border-gray-200 pt-4 mt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Conditional Display (show_if)
+                          </label>
+                          <span className="text-xs text-gray-500">Optional</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-3">
+                          This question will only appear if the condition is met
+                        </p>
+
+                        <div className="space-y-3">
+                          <select
+                            value={showIfMode}
+                            onChange={(e) => {
+                              setShowIfMode(e.target.value);
+                              if (e.target.value === 'none') {
+                                setCurrentCondition({ questionId: '', operator: 'equals', value: '' });
+                              }
+                            }}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
+                          >
+                            <option value="none">No condition (always show)</option>
+                            <option value="simple">Show if condition is met</option>
+                          </select>
+
+                          {showIfMode !== 'none' && (
+                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                              {showIfMode === 'simple' && (
+                                <>
+                                  <div>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                      Depends on Question
+                                    </label>
+                                    <select
+                                      value={currentCondition.questionId}
+                                      onChange={(e) => setCurrentCondition({ ...currentCondition, questionId: e.target.value })}
+                                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-mh-green"
+                                    >
+                                      <option value="">Select a question...</option>
+                                      {createForm.schemaJson.questions
+                                        .filter(q => q.id !== currentQuestion.id) // Don't allow self-reference
+                                        .map(q => (
+                                          <option key={q.id} value={q.id}>
+                                            {q.id}: {q.text.substring(0, 50)}{q.text.length > 50 ? '...' : ''}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </div>
+
+                                  {currentCondition.questionId && (
+                                    <>
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Operator
+                                        </label>
+                                        <select
+                                          value={currentCondition.operator}
+                                          onChange={(e) => setCurrentCondition({ ...currentCondition, operator: e.target.value, value: '' })}
+                                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-mh-green"
+                                          disabled
+                                        >
+                                          <option value="equals">Equals (=)</option>
+                                        </select>
+                                      </div>
+
+                                      <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                                          Value
+                                        </label>
+                                        <input
+                                          type="text"
+                                          value={currentCondition.value}
+                                          onChange={(e) => setCurrentCondition({ ...currentCondition, value: e.target.value })}
+                                          placeholder="Enter value"
+                                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-mh-green"
+                                        />
+                                      </div>
+                                    </>
+                                  )}
+                                </>
+                              )}
+
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       {/* Add Question Button */}
                       <div className="pt-2">
                         <button
@@ -1461,44 +1715,125 @@ function AdminAssessments() {
                   {createForm.schemaJson.questions.length > 0 && (
                     <div className="space-y-2">
                       <h6 className="text-sm font-semibold text-gray-700">Added Questions:</h6>
-                      {createForm.schemaJson.questions.map((q, idx) => (
-                        <div key={idx} className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <span className="text-xs font-semibold text-mh-green">{q.id}</span>
-                              <span className="text-xs text-gray-500">Order: {q.order || idx + 1}</span>
-                              <span className="text-xs text-gray-500">({q.type})</span>
-                              {q.required && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Required</span>}
-                              {q.isCritical && <span className="text-xs bg-red-200 text-red-900 px-2 py-0.5 rounded font-semibold">Critical</span>}
-                            </div>
-                            <p className="text-sm text-gray-800">{q.text}</p>
-                            {q.helpText && (
-                              <p className="text-xs text-gray-600 mt-1 italic">Help: {q.helpText}</p>
-                            )}
-                            {q.options && q.options.length > 0 && (
-                              <div className="mt-2 space-y-1">
-                                <div className="text-xs font-medium text-gray-700">Options with Scores:</div>
-                                {q.options.map((opt, optIdx) => (
-                                  <div key={optIdx} className="text-xs text-gray-600 pl-2">
-                                    <span className="font-semibold text-mh-green">Score {opt.value}:</span> {opt.label}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeQuestion(idx)}
-                            className="text-red-600 hover:text-red-800 ml-2"
+                      {createForm.schemaJson.questions.map((q, idx) => {
+                        const questionErrors = validationErrors.questionErrors[q.id] || [];
+                        const hasErrors = questionErrors.length > 0;
+                        
+                        return (
+                          <div 
+                            key={idx} 
+                            className={`bg-white border-2 rounded-lg p-3 flex justify-between items-start ${
+                              hasErrors 
+                                ? 'border-red-400 bg-red-50' 
+                                : 'border-gray-200'
+                            }`}
                           >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex-1">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span className={`text-xs font-semibold ${hasErrors ? 'text-red-700' : 'text-mh-green'}`}>
+                                  {q.id}
+                                  {hasErrors && (
+                                    <span className="ml-1 text-red-600" title={`${questionErrors.length} error(s)`}>
+                                      ⚠️
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="text-xs text-gray-500">Order: {q.order || idx + 1}</span>
+                                <span className="text-xs text-gray-500">({q.type})</span>
+                                {q.required && <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">Required</span>}
+                                {q.isCritical && <span className="text-xs bg-red-200 text-red-900 px-2 py-0.5 rounded font-semibold">Critical</span>}
+                              </div>
+                              <p className="text-sm text-gray-800">{q.text}</p>
+                              {hasErrors && (
+                                <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-xs">
+                                  <p className="font-semibold text-red-800 mb-1">Errors:</p>
+                                  <ul className="list-disc list-inside space-y-0.5">
+                                    {questionErrors.map((error, errIdx) => (
+                                      <li key={errIdx} className="text-red-700">{error}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                              {q.helpText && (
+                                <p className="text-xs text-gray-600 mt-1 italic">Help: {q.helpText}</p>
+                              )}
+                              {q.options && q.options.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                  <div className="text-xs font-medium text-gray-700">Options with Scores:</div>
+                                  {q.options.map((opt, optIdx) => (
+                                    <div key={optIdx} className="text-xs text-gray-600 pl-2">
+                                      <span className="font-semibold text-mh-green">Score {opt.value}:</span> {opt.label}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeQuestion(idx)}
+                              className="text-red-600 hover:text-red-800 ml-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
+                </div>
+
+                {/* Eligibility Rules Section */}
+                <div className="border-b border-gray-200 pb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-mh-dark">Eligibility Rules</h4>
+                    <span className="text-xs text-gray-500">Optional: Restrict who can take this assessment</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Legacy: Simple minAge */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <label className="flex items-center space-x-2 mb-2">
+                        <input
+                          type="checkbox"
+                          checked={createForm.eligibilityRules.minAge !== undefined}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setCreateForm({
+                                ...createForm,
+                                eligibilityRules: { ...createForm.eligibilityRules, minAge: 18 }
+                              });
+                            } else {
+                              const newRules = { ...createForm.eligibilityRules };
+                              delete newRules.minAge;
+                              setCreateForm({ ...createForm, eligibilityRules: newRules });
+                            }
+                          }}
+                          className="rounded border-gray-300 text-mh-green focus:ring-mh-green"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Set Minimum Age</span>
+                      </label>
+                      {createForm.eligibilityRules.minAge !== undefined && (
+                        <div className="mt-2 ml-6">
+                          <input
+                            type="number"
+                            value={createForm.eligibilityRules.minAge || ''}
+                            onChange={(e) => setCreateForm({
+                              ...createForm,
+                              eligibilityRules: { ...createForm.eligibilityRules, minAge: Number(e.target.value) || 0 }
+                            })}
+                            min="0"
+                            max="120"
+                            className="w-32 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent"
+                            placeholder="Minimum age"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Users must be at least this age to take the assessment</p>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
 
                 {/* Form Actions */}

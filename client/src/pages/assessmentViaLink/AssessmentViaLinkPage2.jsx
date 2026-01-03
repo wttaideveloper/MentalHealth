@@ -67,7 +67,25 @@ const AssessmentViaLinkPage2 = () => {
       }
     } catch (err) {
       console.error('Error starting attempt:', err)
-      toast.error(err.response?.data?.message || 'Failed to start assessment')
+      const errorMessage = err.response?.data?.message || 'Failed to start assessment'
+      const eligibilityDetails = err.response?.data?.eligibilityDetails || []
+      
+      // Enhanced error message for eligibility issues
+      if (err.response?.status === 400 && errorMessage.toLowerCase().includes('eligible')) {
+        let fullMessage = errorMessage
+        if (eligibilityDetails.length > 0) {
+          fullMessage += '\n\nDetails:\n' + eligibilityDetails.map((detail, idx) => `• ${detail}`).join('\n')
+        }
+        toast.error(fullMessage, {
+          duration: 6000,
+          style: {
+            maxWidth: '500px',
+            whiteSpace: 'pre-line'
+          }
+        })
+      } else {
+        toast.error(errorMessage)
+      }
     } finally {
       setLoading(false)
     }

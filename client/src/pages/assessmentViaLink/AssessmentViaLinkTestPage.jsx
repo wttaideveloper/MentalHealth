@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import Breadcrumb from '../../components/Breadcrumb';
 import { validateAssessmentLink, saveLinkAttempt, submitLinkAttempt } from '../../api/publicAssessmentLinkApi';
-import { parseQuestions } from '../../utils/questionParser';
+import { parseQuestions, getQuestionId } from '../../utils/questionParser';
 import QuestionRenderer from '../../components/QuestionRenderer';
+import { getVisibleQuestions } from '../../utils/branchingEngine';
 
 function AssessmentViaLinkTestPage() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ function AssessmentViaLinkTestPage() {
   
   const [test, setTest] = useState(null);
   const [attempt, setAttempt] = useState(null);
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState([]); // All questions from schema
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,6 +23,9 @@ function AssessmentViaLinkTestPage() {
   
   const autosaveTimerRef = useRef(null);
   const timeIntervalRef = useRef(null);
+  
+  // Compute visible questions based on current answers (re-computes on every render)
+  const visibleQuestions = getVisibleQuestions(questions, answers);
 
   // Load attempt data from localStorage or API
   useEffect(() => {
@@ -134,9 +138,23 @@ function AssessmentViaLinkTestPage() {
     }
   };
 
-  // Calculate progress
-  const answeredCount = Object.keys(answers).filter(key => answers[key] !== undefined && answers[key] !== '').length;
-  const totalQuestions = questions.length;
+  // Calculate progress (only count visible questions)
+  const visibleQuestionIds = visibleQuestions.map(({ question }) => {
+    return getQuestionId(question, questions.indexOf(question));
+  });
+  
+  const answeredCount = visibleQuestionIds.filter(qId => {
+    const answer = answers[qId];
+    if (answer === null || answer === undefined || answer === '') {
+      return false;
+    }
+    // For checkbox (array), check if it's not empty
+    if (Array.isArray(answer)) {
+      return answer.length > 0;
+    }
+    return true;
+  }).length;
+  const totalQuestions = visibleQuestions.length;
   const progress = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
 
   if (loading) {
@@ -199,17 +217,29 @@ function AssessmentViaLinkTestPage() {
         </div>
       </div>
 
-      {/* Questions */}
+      {/* Questions - Only show visible questions */}
       <div className="space-y-8">
-        {questions.map((question, index) => (
-          <QuestionRenderer
-            key={index}
+        {visibleQuestions.length === 0 ? (
+          <div className="bg-white rounded-lg p-8 text-center">
+            <p className="text-gray-600">
+              {questions.length === 0 
+                ? 'No questions available for this assessment.'
+                : 'No questions are currently visible based on your answers. Please answer previous questions to see more.'}
+            </p>
+          </div>
+        ) : (
+          visibleQuestions.map(({ question, originalIndex }, displayIndex) => (
+            <QuestionRenderer
+              key={getQuestionId(question, originalIndex)}
+              question={question}
+              index={displayIndex} // Use display index for numbering visible questions
             question={question}
             index={index}
-            answers={answers}
-            onAnswerChange={handleAnswerChange}
-          />
-        ))}
+              answers={answers}
+              onAnswerChange={handleAnswerChange}
+            />
+          ))
+        )}
       </div>
 
       {/* Bottom Actions */}

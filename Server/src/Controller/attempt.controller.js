@@ -61,14 +61,17 @@ exports.loadTest = asyncHandler(async (req, res, next) => {
   // Attach test to request for use in subsequent middleware/controllers
   req.test = testDoc;
   
-  // Check eligibility (age, etc.)
-  const eligibilityCheck = checkEligibility(req.user, testDoc);
+  // Check eligibility (age, gender, custom fields, etc.)
+  // Support participantInfo for anonymous users (from assessment links)
+  const participantInfo = req.body?.participantInfo || null;
+  const eligibilityCheck = checkEligibility(req.user, testDoc, participantInfo);
   req.eligibilityCheck = eligibilityCheck;
   
   if (!eligibilityCheck.ok) {
     return res.status(400).json({ 
       success: false, 
-      message: eligibilityCheck.reason || "Not eligible for this test" 
+      message: eligibilityCheck.reason || "Not eligible for this test",
+      eligibilityDetails: eligibilityCheck.details || []
     });
   }
   

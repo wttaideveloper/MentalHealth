@@ -12,6 +12,7 @@ import {
   getQuestionId
 } from '../../utils/questionParser';
 import QuestionRenderer from '../../components/QuestionRenderer';
+import { getVisibleQuestions } from '../../utils/branchingEngine';
 
 function AssessmentTestPage() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ function AssessmentTestPage() {
   
   const [test, setTest] = useState(null);
   const [attempt, setAttempt] = useState(null);
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState([]); // All questions from schema
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,6 +30,9 @@ function AssessmentTestPage() {
   
   const autosaveTimerRef = useRef(null);
   const timeIntervalRef = useRef(null);
+  
+  // Compute visible questions based on current answers (re-computes on every render)
+  const visibleQuestions = getVisibleQuestions(questions, answers);
 
   // Initialize test and attempt
   useEffect(() => {
@@ -130,8 +134,27 @@ function AssessmentTestPage() {
       }
     } catch (err) {
       console.error('Error initializing test:', err);
-      setError(err.response?.data?.message || 'Failed to load assessment');
-      toast.error(err.response?.data?.message || 'Failed to load assessment');
+      const errorMessage = err.response?.data?.message || 'Failed to load assessment';
+      const eligibilityDetails = err.response?.data?.eligibilityDetails || [];
+      
+      // Enhanced error message for eligibility issues
+      if (err.response?.status === 400 && errorMessage.toLowerCase().includes('eligible')) {
+        let fullMessage = errorMessage;
+        if (eligibilityDetails.length > 0) {
+          fullMessage += '\n\nDetails:\n' + eligibilityDetails.map((detail, idx) => `• ${detail}`).join('\n');
+        }
+        setError(fullMessage);
+        toast.error(errorMessage, {
+          duration: 5000,
+          style: {
+            maxWidth: '500px',
+            whiteSpace: 'pre-line'
+          }
+        });
+      } else {
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -191,11 +214,23 @@ function AssessmentTestPage() {
   const handleSubmit = async () => {
     if (!attempt?._id) return;
     
-    // Basic validation - check if all required questions are answered
-    const requiredQuestions = questions.filter(q => q.required !== false);
-    const unanswered = requiredQuestions.filter(q => {
-      const qId = getQuestionId(q, questions.indexOf(q));
-      return !answers[qId] || answers[qId] === '';
+    // Basic validation - check if all visible required questions are answered
+    // Only validate questions that are currently visible
+    const visibleRequiredQuestions = visibleQuestions
+      .filter(({ question }) => question.required !== false);
+    
+    const unanswered = visibleRequiredQuestions.filter(({ question, originalIndex }) => {
+      const qId = getQuestionId(question, originalIndex);
+      const answer = answers[qId];
+      // Handle different answer types: string, number, boolean, array (for checkbox)
+      if (answer === null || answer === undefined || answer === '') {
+        return true; // Unanswered
+      }
+      // For checkbox (array), check if it's empty
+      if (Array.isArray(answer) && answer.length === 0) {
+        return true; // Unanswered
+      }
+      return false; // Answered
     });
     
     if (unanswered.length > 0) {
@@ -222,16 +257,29 @@ function AssessmentTestPage() {
   };
 
 
-  // Calculate progress
+  // Calculate progress (only count visible questions)
   const calculateProgress = () => {
-    if (questions.length === 0) return { percentage: 0, answered: 0, total: 0 };
+    if (visibleQuestions.length === 0) return { percentage: 0, answered: 0, total: 0 };
     
-    const answeredCount = Object.keys(answers).filter(key => 
-      answers[key] !== null && answers[key] !== undefined && answers[key] !== ''
-    ).length;
+    // Only count answers for visible questions
+    const visibleQuestionIds = visibleQuestions.map(({ question }) => {
+      return getQuestionId(question, questions.indexOf(question));
+    });
     
-    const percentage = Math.round((answeredCount / questions.length) * 100);
-    return { percentage, answered: answeredCount, total: questions.length };
+    const answeredCount = visibleQuestionIds.filter(qId => {
+      const answer = answers[qId];
+      if (answer === null || answer === undefined || answer === '') {
+        return false;
+      }
+      // For checkbox (array), check if it's not empty
+      if (Array.isArray(answer)) {
+        return answer.length > 0;
+      }
+      return true;
+    }).length;
+    
+    const percentage = Math.round((answeredCount / visibleQuestions.length) * 100);
+    return { percentage, answered: answeredCount, total: visibleQuestions.length };
   };
 
   const progress = calculateProgress();
@@ -306,18 +354,22 @@ function AssessmentTestPage() {
         </div>
       </div>
 
-      {/* Questions */}
+      {/* Questions - Only show visible questions */}
       <div className="space-y-8">
-        {questions.length === 0 ? (
+        {visibleQuestions.length === 0 ? (
           <div className="bg-white rounded-lg p-8 text-center">
-            <p className="text-gray-600">No questions available for this assessment.</p>
+            <p className="text-gray-600">
+              {questions.length === 0 
+                ? 'No questions available for this assessment.'
+                : 'No questions are currently visible based on your answers. Please answer previous questions to see more.'}
+            </p>
           </div>
         ) : (
-          questions.map((question, index) => (
+          visibleQuestions.map(({ question, originalIndex }, displayIndex) => (
             <QuestionRenderer
-              key={getQuestionId(question, index)}
+              key={getQuestionId(question, originalIndex)}
               question={question}
-              index={index}
+              index={displayIndex} // Use display index for numbering visible questions
               answers={answers}
               onAnswerChange={handleAnswerChange}
             />

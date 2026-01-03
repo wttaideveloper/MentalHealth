@@ -6,6 +6,7 @@ const { TestAttempt } = require("../model/TestAttempt");
 const { Result } = require("../model/Result");
 const { computeScore } = require("../services/scoring.service");
 const { evaluateRisk } = require("../services/risk.service");
+const { checkEligibility } = require("../services/eligibility.service");
 
 /**
  * Validate assessment link token
@@ -97,6 +98,19 @@ exports.start = asyncHandler(async (req, res) => {
   const testDoc = await Test.findById(linkDoc.testId);
   if (!testDoc || !testDoc.isActive) {
     return res.status(404).json({ success: false, message: "Test not found or inactive" });
+  }
+
+  // Check eligibility for anonymous user (using participantInfo)
+  // Create a dummy user object for compatibility
+  const dummyUser = { profile: participantInfo || {} };
+  const eligibilityCheck = checkEligibility(dummyUser, testDoc, participantInfo);
+  
+  if (!eligibilityCheck.ok) {
+    return res.status(400).json({ 
+      success: false, 
+      message: eligibilityCheck.reason || "Not eligible for this assessment",
+      eligibilityDetails: eligibilityCheck.details || []
+    });
   }
 
   // Check if there's already an in_progress attempt for this link token

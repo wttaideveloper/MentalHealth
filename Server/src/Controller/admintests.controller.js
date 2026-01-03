@@ -2,6 +2,7 @@ const { asyncHandler } = require("../utils/Asynchandler");
 const { ok, created } = require("../utils/Response");
 const { Test } = require("../model/Test");
 const { writeAudit } = require("../services/audit.service");
+const { validateTestData } = require("../services/schemaValidation.service");
 
 /**
  * Get all tests including inactive (admin only)
@@ -78,6 +79,22 @@ exports.create = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: "Title and schemaJson are required" });
   }
 
+  // Validate schema and test data
+  const validation = validateTestData(testData);
+  if (!validation.valid) {
+    return res.status(400).json({
+      success: false,
+      message: "Schema validation failed",
+      errors: validation.errors,
+      warnings: validation.warnings
+    });
+  }
+
+  // Log warnings if any
+  if (validation.warnings.length > 0) {
+    console.log('Schema validation warnings:', validation.warnings);
+  }
+
   // Debug: Log imageUrl if present
   if (testData.imageUrl) {
     console.log('Creating test with imageUrl:', testData.imageUrl);
@@ -102,6 +119,30 @@ exports.update = asyncHandler(async (req, res) => {
   const testDoc = await Test.findById(testId);
   if (!testDoc) {
     return res.status(404).json({ success: false, message: "Test not found" });
+  }
+
+  // Merge update data with existing test data for validation
+  const mergedData = {
+    ...testDoc.toObject(),
+    ...updateData
+  };
+
+  // Validate schema and test data if schemaJson is being updated
+  if (updateData.schemaJson || updateData.title) {
+    const validation = validateTestData(mergedData);
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Schema validation failed",
+        errors: validation.errors,
+        warnings: validation.warnings
+      });
+    }
+
+    // Log warnings if any
+    if (validation.warnings.length > 0) {
+      console.log('Schema validation warnings:', validation.warnings);
+    }
   }
 
   // Update fields
