@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const { cfg } = require("../config/config");
 const { User } = require("../model/User");
-const { RefreshToken } = require("../model/Refreshtoken");
+const { RefreshToken } = require("../model/RefreshToken");
 const { asyncHandler } = require("../utils/Asynchandler");
 const { ok, created } = require("../utils/Response");
 const { signAccessToken, signRefreshToken, hashToken } = require("../services/token.service");
