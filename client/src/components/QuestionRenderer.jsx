@@ -5,6 +5,7 @@ import {
   getQuestionText,
   getQuestionId
 } from '../utils/questionParser';
+import { evaluateShowIf } from '../utils/branchingEngine';
 
 /**
  * Render a single question option (radio button)
@@ -12,6 +13,8 @@ import {
 function RadioOption({ option, questionId, checked, onChange }) {
   // Convert option.value to string for consistent comparison
   const optionValueStr = String(option.value);
+  // Preserve original value type for proper comparison
+  const optionValue = option.value;
   
   return (
     <label className={`flex items-center cursor-pointer p-3 rounded-lg transition-colors ${
@@ -23,7 +26,10 @@ function RadioOption({ option, questionId, checked, onChange }) {
           name={questionId}
           value={optionValueStr}
           checked={checked}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            // Preserve the original value type (number or string) from option
+            onChange(optionValue);
+          }}
           className="sr-only"
         />
         <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center ${
@@ -86,40 +92,92 @@ function CheckboxOption({ option, questionId, checked, onChange }) {
 }
 
 /**
- * Render sub-questions
+ * Render sub-questions (supports nested sub-questions and conditional display)
  */
-function SubQuestionRenderer({ subQuestion, index, questionId, answers, onAnswerChange }) {
+function SubQuestionRenderer({ subQuestion, index, parentQuestionId, parentAnswer, answers, onAnswerChange, depth = 0 }) {
   const subQId = getQuestionId(subQuestion, index);
+  const subQType = getQuestionType(subQuestion);
   const subQOptions = getQuestionOptions(subQuestion);
   const subQText = getQuestionText(subQuestion);
+  const subQSubQuestions = getSubQuestions(subQuestion);
   const answer = answers[subQId] || '';
+  
+  // Check if sub-question should be shown based on parent answer or its own show_if
+  const showIf = subQuestion.show_if || subQuestion.showIf;
+  let isVisible = true;
+  
+  if (showIf) {
+    // Use show_if condition if specified
+    isVisible = evaluateShowIf(showIf, answers);
+  } else if (parentQuestionId && parentAnswer !== undefined) {
+    // Default behavior: show sub-questions if parent has a non-empty answer
+    // This means sub-questions appear when parent question is answered
+    // (Hide when parent answer is empty, null, or "No" for boolean)
+    const parentAnswerStr = String(parentAnswer).toLowerCase();
+    isVisible = parentAnswer !== null && 
+                parentAnswer !== undefined && 
+                parentAnswer !== '' && 
+                parentAnswerStr !== 'no' && 
+                parentAnswerStr !== 'false';
+  }
+  
+  if (!isVisible) {
+    return null;
+  }
 
+  // Render based on sub-question type
+  if (subQType === 'radio' && subQOptions.length > 0) {
+    return (
+      <div className={`mb-4 ${depth > 0 ? 'ml-4' : ''}`}>
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <h4 className="text-sm sm:text-base font-semibold text-gray-900 mb-4 flex items-start">
+            <span className="text-gray-800 mr-2 mt-1">◆</span>
+            <span>{subQText}</span>
+          </h4>
+          <div className={`grid grid-cols-1 ${subQOptions.length > 3 ? 'sm:grid-cols-2 lg:flex lg:gap-4' : 'sm:flex sm:gap-4'} gap-3 mb-4`}>
+            {subQOptions.map((option) => (
+              <RadioOption
+                key={option.value}
+                option={option}
+                questionId={subQId}
+                checked={String(answer) === String(option.value)}
+                onChange={(value) => onAnswerChange(subQId, value)}
+              />
+            ))}
+          </div>
+          
+          {/* Nested sub-questions */}
+          {subQSubQuestions.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-300">
+              {subQSubQuestions.map((nestedSubQ, nestedIndex) => (
+                <SubQuestionRenderer
+                  key={nestedIndex}
+                  subQuestion={nestedSubQ}
+                  index={nestedIndex}
+                  parentQuestionId={subQId}
+                  parentAnswer={answer}
+                  answers={answers}
+                  onAnswerChange={onAnswerChange}
+                  depth={depth + 1}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  
+  // For other types, render as before but with updated styling
   return (
-    <div className="mb-6">
-      <h4 className="text-sm sm:text-base font-medium text-gray-900 mb-4 flex items-center">
-        <svg
-          className="w-4 h-4 mr-2 text-mh-green flex-shrink-0"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M12 3l2.5 6L21 12l-6.5 3L12 21l-2.5-6L3 12l6.5-3L12 3z" />
-        </svg>
-        {subQText}
-      </h4>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:gap-4 gap-3">
-        {subQOptions.map((option) => (
-          <RadioOption
-            key={option.value}
-            option={option}
-            questionId={subQId}
-            checked={String(answer) === String(option.value)}
-            onChange={(value) => onAnswerChange(subQId, value)}
-          />
-        ))}
+    <div className={`mb-4 ${depth > 0 ? 'ml-4' : ''}`}>
+      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <h4 className="text-sm sm:text-base font-semibold text-gray-900 mb-4 flex items-start">
+          <span className="text-gray-800 mr-2 mt-1">◆</span>
+          <span>{subQText}</span>
+        </h4>
+        {/* Render other question types here if needed */}
+        <p className="text-gray-500 text-sm">Sub-question type "{subQType}" rendering not yet implemented</p>
       </div>
     </div>
   );
@@ -426,17 +484,19 @@ function QuestionRenderer({ question, index, answers, onAnswerChange }) {
           ))}
         </div>
 
-        {/* Sub-questions */}
+        {/* Sub-questions - conditionally shown based on answer */}
         {subQuestions.length > 0 && (
-          <div className="bg-gray-100 rounded-lg p-4 sm:p-6">
+          <div className="mt-4">
             {subQuestions.map((subQ, subIndex) => (
               <SubQuestionRenderer
                 key={subIndex}
                 subQuestion={subQ}
                 index={subIndex}
-                questionId={questionId}
+                parentQuestionId={questionId}
+                parentAnswer={answer}
                 answers={answers}
                 onAnswerChange={onAnswerChange}
+                depth={0}
               />
             ))}
           </div>

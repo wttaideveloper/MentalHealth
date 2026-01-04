@@ -645,14 +645,108 @@ function AdminAssessments() {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const jsonData = JSON.parse(event.target.result);
-
-        // Validate JSON structure
-        if (!jsonData.questions || !Array.isArray(jsonData.questions)) {
-          throw new Error('JSON must contain a "questions" array');
+        const fileContent = event.target.result;
+        if (!fileContent || fileContent.trim() === '') {
+          throw new Error('JSON file is empty');
         }
 
-        if (jsonData.questions.length === 0) {
+        let parsedData;
+        try {
+          parsedData = JSON.parse(fileContent);
+        } catch (parseError) {
+          throw new Error(`Invalid JSON format: ${parseError.message}`);
+        }
+
+        if (!parsedData) {
+          throw new Error('JSON file is empty or invalid');
+        }
+        
+        // Handle different JSON formats
+        let jsonData = parsedData;
+        let questionsArray = null;
+        
+        // Case 1: Direct questions array
+        if (Array.isArray(parsedData)) {
+          questionsArray = parsedData;
+        }
+        // Case 2: Has questions property
+        else if (parsedData.questions && Array.isArray(parsedData.questions)) {
+          questionsArray = parsedData.questions;
+          jsonData = parsedData;
+        }
+        // Case 3: Wrapped in schemaJson
+        else if (parsedData.schemaJson && parsedData.schemaJson.questions && Array.isArray(parsedData.schemaJson.questions)) {
+          questionsArray = parsedData.schemaJson.questions;
+          jsonData = parsedData.schemaJson;
+        }
+        // Case 4: Has items property (alternative name)
+        else if (parsedData.items && Array.isArray(parsedData.items)) {
+          questionsArray = parsedData.items;
+          jsonData = parsedData;
+        }
+        // Case 5: Single question object (has id, text, type)
+        else if (typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+          // Check if it's a single question object
+          if (parsedData.id && (parsedData.text || parsedData.question) && parsedData.type) {
+            questionsArray = [parsedData];
+            jsonData = { questions: questionsArray };
+          }
+          // Case 6: Object with question IDs as keys
+          else {
+            const keys = Object.keys(parsedData);
+            if (keys.length > 0) {
+              const firstKey = keys[0];
+              const firstItem = parsedData[firstKey];
+              // Check if it looks like questions object
+              if (firstItem && typeof firstItem === 'object' && (firstItem.id || firstItem.text || firstItem.question || firstItem.type)) {
+                // Convert object to array
+                questionsArray = keys.map(key => {
+                  const item = parsedData[key];
+                  // If item already has an id, use it; otherwise use the key
+                  return {
+                    id: item.id || key,
+                    ...item
+                  };
+                });
+                jsonData = { questions: questionsArray };
+              } else {
+                // Case 7: Try to find any array property that might contain questions
+                for (const key of keys) {
+                  const value = parsedData[key];
+                  if (Array.isArray(value) && value.length > 0) {
+                    // Check if first item looks like a question
+                    const firstArrayItem = value[0];
+                    if (firstArrayItem && typeof firstArrayItem === 'object' && 
+                        (firstArrayItem.id || firstArrayItem.text || firstArrayItem.question || firstArrayItem.type)) {
+                      questionsArray = value;
+                      jsonData = { questions: questionsArray };
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Validate JSON structure
+        if (!questionsArray || !Array.isArray(questionsArray)) {
+          const receivedType = Array.isArray(parsedData) ? 'array' : typeof parsedData;
+          const receivedKeys = typeof parsedData === 'object' && !Array.isArray(parsedData) 
+            ? Object.keys(parsedData).join(', ') 
+            : 'N/A';
+          
+          throw new Error(
+            `JSON must contain a "questions" array. ` +
+            `Received: ${receivedType}${receivedKeys !== 'N/A' ? ` with keys: ${receivedKeys}` : ''}. ` +
+            `Supported formats:\n` +
+            `1. { "questions": [...] }\n` +
+            `2. [ { "id": "...", "text": "...", ... }, ... ]\n` +
+            `3. { "schemaJson": { "questions": [...] } }`
+          );
+        }
+
+        if (questionsArray.length === 0) {
           throw new Error('Questions array cannot be empty');
         }
 
@@ -660,7 +754,7 @@ function AdminAssessments() {
         const validatedQuestions = [];
         const questionIds = new Set();
 
-        jsonData.questions.forEach((q, index) => {
+        questionsArray.forEach((q, index) => {
           // Validate required fields
           if (!q.id || typeof q.id !== 'string') {
             throw new Error(`Question ${index + 1}: "id" is required and must be a string`);
@@ -684,9 +778,21 @@ function AdminAssessments() {
           }
 
           // Validate options for radio, checkbox, and likert types
+          // Note: Questions with subQuestions may not need options (they act as containers)
           if (['radio', 'checkbox', 'likert'].includes(questionType)) {
-            if (!q.options || !Array.isArray(q.options) || q.options.length < 2) {
-              throw new Error(`Question ${index + 1}: Must have at least 2 options for type "${questionType}"`);
+            const hasSubQuestions = (q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) ||
+                                   (q.children && Array.isArray(q.children) && q.children.length > 0);
+            
+            // If question has subQuestions, options are optional
+            if (!hasSubQuestions) {
+              if (!q.options || !Array.isArray(q.options) || q.options.length < 2) {
+                throw new Error(`Question ${index + 1}: Must have at least 2 options for type "${questionType}" (or include subQuestions)`);
+              }
+            } else {
+              // If it has subQuestions, options are optional but if provided, should be valid
+              if (q.options && Array.isArray(q.options) && q.options.length > 0 && q.options.length < 2) {
+                throw new Error(`Question ${index + 1}: If options are provided for type "${questionType}", must have at least 2 options`);
+              }
             }
 
             // Validate each option
@@ -712,8 +818,25 @@ function AdminAssessments() {
             options: q.options ? q.options.map(opt => ({
               value: typeof opt.value === 'number' ? opt.value : Number(opt.value) || opt.value,
               label: String(opt.label).trim()
-            })) : []
+            })) : [],
+            // Preserve sub-questions if present
+            subQuestions: q.subQuestions || q.children || [],
+            // Preserve show_if conditions
+            show_if: q.show_if || q.showIf || undefined,
+            // Preserve other numeric constraints
+            min: q.min !== undefined ? Number(q.min) : undefined,
+            max: q.max !== undefined ? Number(q.max) : undefined,
+            step: q.step !== undefined ? Number(q.step) : undefined,
+            maxLength: q.maxLength !== undefined ? Number(q.maxLength) : undefined,
+            rows: q.rows !== undefined ? Number(q.rows) : undefined
           };
+          
+          // Remove undefined fields to keep JSON clean
+          Object.keys(validatedQuestion).forEach(key => {
+            if (validatedQuestion[key] === undefined) {
+              delete validatedQuestion[key];
+            }
+          });
 
           validatedQuestions.push(validatedQuestion);
         });

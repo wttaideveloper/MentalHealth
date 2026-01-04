@@ -1,0 +1,200 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "text": "Overall, do you think that your child has difficulties in one or more of the following areas: emotions, concentration, behaviour or being able to get on with other people?",
+      "type": "radio",
+      "required": true,
+      "options": [
+        { "value": 0, "label": "No" },
+        { "value": 1, "label": "Yes minor difficulties" },
+        { "value": 2, "label": "Yes definite difficulties" },
+        { "value": 3, "label": "Yes severe difficulties" }
+      ],
+      "subQuestions": [
+        {
+          "id": "q1_sub1",
+          "text": "How long have these difficulties been present?",
+          "type": "radio",
+          "show_if": {
+            "questionId": "q1",
+            "in": [1, 2, 3]
+          },
+          "options": [
+            { "value": 1, "label": "Less than a month" },
+            { "value": 2, "label": "1-5 months" },
+            { "value": 3, "label": "6-12 months" },
+            { "value": 4, "label": "Over a year" }
+          ]
+        },
+        {
+          "id": "q1_sub2",
+          "text": "Do the difficulties upset or distress your child?",
+          "type": "radio",
+          "show_if": {
+            "questionId": "q1",
+            "in": [1, 2, 3]
+          },
+          "options": [
+            { "value": 1, "label": "Not at all" },
+            { "value": 2, "label": "Only a little" },
+            { "value": 3, "label": "Quite a lot" },
+            { "value": 4, "label": "A great deal" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q2",
+      "text": "Have you experienced any of the following symptoms in the past two weeks?",
+      "type": "checkbox",
+      "required": true,
+      "options": [
+        { "value": 1, "label": "Difficulty sleeping" },
+        { "value": 2, "label": "Loss of appetite" },
+        { "value": 3, "label": "Fatigue or low energy" },
+        { "value": 4, "label": "Difficulty concentrating" },
+        { "value": 5, "label": "Feeling anxious or worried" }
+      ],
+      "subQuestions": [
+        {
+          "id": "q2_sub1",
+          "text": "If you selected 'Difficulty sleeping', how many hours of sleep do you typically get per night?",
+          "type": "numeric",
+          "show_if": {
+            "questionId": "q2",
+            "in": [1]
+          },
+          "min": 0,
+          "max": 24
+        }
+      ]
+    },
+    {
+      "id": "q3",
+      "text": "Do the difficulties interfere with your child's everyday life in the following areas?",
+      "type": "radio",
+      "required": true,
+      "options": [
+        { "value": 1, "label": "Yes" },
+        { "value": 2, "label": "No" }
+      ],
+      "subQuestions": [
+        {
+          "id": "q3_sub1",
+          "text": "Home Life",
+          "type": "radio",
+          "show_if": {
+            "questionId": "q3",
+            "equals": 1
+          },
+          "options": [
+            { "value": 1, "label": "Not at all" },
+            { "value": 2, "label": "Only a little" },
+            { "value": 3, "label": "Quite a lot" },
+            { "value": 4, "label": "A great deal" }
+          ]
+        },
+        {
+          "id": "q3_sub2",
+          "text": "Friendships",
+          "type": "radio",
+          "show_if": {
+            "questionId": "q3",
+            "equals": 1
+          },
+          "options": [
+            { "value": 1, "label": "Not at all" },
+            { "value": 2, "label": "Only a little" },
+            { "value": 3, "label": "Quite a lot" },
+            { "value": 4, "label": "A great deal" }
+          ]
+        },
+        {
+          "id": "q3_sub3",
+          "text": "Classroom Learning",
+          "type": "radio",
+          "show_if": {
+            "questionId": "q3",
+            "equals": 1
+          },
+          "options": [
+            { "value": 1, "label": "Not at all" },
+            { "value": 2, "label": "Only a little" },
+            { "value": 3, "label": "Quite a lot" },
+            { "value": 4, "label": "A great deal" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q4",
+      "text": "On a scale of 1 to 5, how would you rate your overall satisfaction with your current mental health support?",
+      "type": "likert",
+      "required": true,
+      "options": [
+        { "value": 1, "label": "Very Dissatisfied" },
+        { "value": 2, "label": "Dissatisfied" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Satisfied" },
+        { "value": 5, "label": "Very Satisfied" }
+      ]
+    },
+    {
+      "id": "q5",
+      "text": "Have you sought professional help for mental health concerns in the past year?",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "id": "q6",
+      "text": "What is your age?",
+      "type": "numeric",
+      "required": true,
+      "min": 13,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "id": "q7",
+      "text": "Please describe any specific concerns or symptoms you have been experiencing:",
+      "type": "textarea",
+      "required": false,
+      "rows": 5,
+      "maxLength": 500
+    },
+    {
+      "id": "q8",
+      "text": "What is your primary occupation or role?",
+      "type": "text",
+      "required": true,
+      "maxLength": 100
+    },
+    {
+      "id": "q9",
+      "text": "How often do you engage in physical exercise?",
+      "type": "radio",
+      "required": true,
+      "options": [
+        { "value": 1, "label": "Daily" },
+        { "value": 2, "label": "3-4 times per week" },
+        { "value": 3, "label": "1-2 times per week" },
+        { "value": 4, "label": "Rarely or never" }
+      ]
+    },
+    {
+      "id": "q10",
+      "text": "Rate your agreement with the following statement: 'I feel supported by my family and friends'",
+      "type": "likert",
+      "required": true,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    }
+  ]
+}
+

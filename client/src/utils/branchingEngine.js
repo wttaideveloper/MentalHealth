@@ -56,7 +56,13 @@ export function evaluateCondition(condition, answers) {
   if (condition.equals !== undefined) {
     const conditionValue = condition.equals;
     if (Array.isArray(answerValue)) {
-      return answerArray.includes(String(conditionValue));
+      const conditionStr = String(conditionValue);
+      const conditionNum = safeNumber(conditionValue);
+      return answerArray.some(val => {
+        const valStr = String(val);
+        const valNum = safeNumber(val);
+        return valStr === conditionStr || (valNum !== null && conditionNum !== null && valNum === conditionNum);
+      });
     }
     if (answerNum !== null && safeNumber(conditionValue) !== null) {
       return answerNum === safeNumber(conditionValue);
@@ -105,9 +111,20 @@ export function evaluateCondition(condition, answers) {
     const allowedValues = Array.isArray(condition.in) ? condition.in : [condition.in];
     if (Array.isArray(answerValue)) {
       // For checkbox, check if any selected value is in allowed list
-      return answerArray.some(val => allowedValues.includes(String(val)));
+      return answerArray.some(val => {
+        const valStr = String(val);
+        const valNum = safeNumber(val);
+        return allowedValues.some(allowed => 
+          String(allowed) === valStr || (valNum !== null && safeNumber(allowed) === valNum)
+        );
+      });
     }
-    return allowedValues.includes(String(answerValue));
+    // Check both string and number comparison
+    const answerStr = String(answerValue);
+    const answerNum = safeNumber(answerValue);
+    return allowedValues.some(allowed => 
+      String(allowed) === answerStr || (answerNum !== null && safeNumber(allowed) === answerNum)
+    );
   }
 
   // contains (string contains substring)
