@@ -85,10 +85,20 @@ export function getQuestionOptions(question) {
       if (typeof opt === 'string') {
         return { value: opt, label: opt };
       }
-      return {
-        value: opt.value || opt.id || opt.key,
-        label: opt.label || opt.text || opt.value || opt.id || opt.key
-      };
+      // Use explicit checks to preserve 0, false, and empty string as valid values
+      // Check value first, then id, then key (but preserve 0/false if they are the actual values)
+      let value;
+      if (opt.value !== undefined && opt.value !== null) {
+        value = opt.value;
+      } else if (opt.id !== undefined && opt.id !== null) {
+        value = opt.id;
+      } else {
+        value = opt.key;
+      }
+      
+      const label = opt.label || opt.text || String(value !== undefined && value !== null ? value : '');
+      
+      return { value, label };
     });
   }
   

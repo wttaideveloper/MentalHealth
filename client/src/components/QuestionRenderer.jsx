@@ -8,6 +8,30 @@ import {
 import { evaluateShowIf } from '../utils/branchingEngine';
 
 /**
+ * Compare answer value with option value (handles 0, false, and other edge cases)
+ */
+function isAnswerMatch(answer, optionValue) {
+  // Strict equality check (handles exact matches including 0, false, null, undefined)
+  if (answer === optionValue) {
+    return true;
+  }
+  
+  // String comparison (handles type coercion)
+  if (String(answer) === String(optionValue)) {
+    return true;
+  }
+  
+  // Number comparison (handles string numbers like "0" vs 0)
+  const answerNum = Number(answer);
+  const optionNum = Number(optionValue);
+  if (!isNaN(answerNum) && !isNaN(optionNum) && answerNum === optionNum) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Render a single question option (radio button)
  */
 function RadioOption({ option, questionId, checked, onChange }) {
@@ -18,7 +42,7 @@ function RadioOption({ option, questionId, checked, onChange }) {
   
   return (
     <label className={`flex items-center cursor-pointer p-3 rounded-lg transition-colors ${
-      checked ? 'bg-mh-green' : 'bg-mh-light'
+      checked ? 'bg-mh-green' : 'bg-mh-light hover:bg-gray-200'
     }`}>
       <div className="relative">
         <input
@@ -100,7 +124,8 @@ function SubQuestionRenderer({ subQuestion, index, parentQuestionId, parentAnswe
   const subQOptions = getQuestionOptions(subQuestion);
   const subQText = getQuestionText(subQuestion);
   const subQSubQuestions = getSubQuestions(subQuestion);
-  const answer = answers[subQId] || '';
+  // Use nullish coalescing to preserve 0 as a valid answer value
+  const answer = answers[subQId] !== undefined && answers[subQId] !== null ? answers[subQId] : '';
   
   // Check if sub-question should be shown based on parent answer or its own show_if
   const showIf = subQuestion.show_if || subQuestion.showIf;
@@ -109,16 +134,13 @@ function SubQuestionRenderer({ subQuestion, index, parentQuestionId, parentAnswe
   if (showIf) {
     // Use show_if condition if specified
     isVisible = evaluateShowIf(showIf, answers);
-  } else if (parentQuestionId && parentAnswer !== undefined) {
+  } else if (parentQuestionId) {
     // Default behavior: show sub-questions if parent has a non-empty answer
-    // This means sub-questions appear when parent question is answered
-    // (Hide when parent answer is empty, null, or "No" for boolean)
-    const parentAnswerStr = String(parentAnswer).toLowerCase();
+    // Check if parent answer exists (not null, undefined, or empty string)
+    // Note: 0 is a valid answer value, so we use explicit null/undefined check
     isVisible = parentAnswer !== null && 
                 parentAnswer !== undefined && 
-                parentAnswer !== '' && 
-                parentAnswerStr !== 'no' && 
-                parentAnswerStr !== 'false';
+                parentAnswer !== '';
   }
   
   if (!isVisible) {
@@ -135,15 +157,19 @@ function SubQuestionRenderer({ subQuestion, index, parentQuestionId, parentAnswe
             <span>{subQText}</span>
           </h4>
           <div className={`grid grid-cols-1 ${subQOptions.length > 3 ? 'sm:grid-cols-2 lg:flex lg:gap-4' : 'sm:flex sm:gap-4'} gap-3 mb-4`}>
-            {subQOptions.map((option) => (
-              <RadioOption
-                key={option.value}
-                option={option}
-                questionId={subQId}
-                checked={String(answer) === String(option.value)}
-                onChange={(value) => onAnswerChange(subQId, value)}
-              />
-            ))}
+            {subQOptions.map((option) => {
+              // Use robust comparison function to handle 0, false, and other edge cases
+              const isChecked = isAnswerMatch(answer, option.value);
+              return (
+                <RadioOption
+                  key={option.value}
+                  option={option}
+                  questionId={subQId}
+                  checked={isChecked}
+                  onChange={(value) => onAnswerChange(subQId, value)}
+                />
+              );
+            })}
           </div>
           
           {/* Nested sub-questions */}
@@ -198,15 +224,19 @@ function LikertQuestion({ question, questionId, questionText, index, answer, onA
       </div>
       
       <div className={`grid grid-cols-1 ${options.length > 4 ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 lg:flex lg:gap-4'} gap-3`}>
-        {options.map((option) => (
-          <RadioOption
-            key={option.value}
-            option={option}
-            questionId={questionId}
-            checked={String(answer) === String(option.value)}
-            onChange={(value) => onAnswerChange(questionId, value)}
-          />
-        ))}
+        {options.map((option) => {
+          // Use robust comparison function to handle 0, false, and other edge cases
+          const isChecked = isAnswerMatch(answer, option.value);
+          return (
+            <RadioOption
+              key={option.value}
+              option={option}
+              questionId={questionId}
+              checked={isChecked}
+              onChange={(value) => onAnswerChange(questionId, value)}
+            />
+          );
+        })}
       </div>
     </div>
   );
@@ -398,7 +428,8 @@ function QuestionRenderer({ question, index, answers, onAnswerChange }) {
   const questionType = getQuestionType(question);
   const options = getQuestionOptions(question);
   const subQuestions = getSubQuestions(question);
-  const answer = answers[questionId] || '';
+  // Use explicit check to preserve 0 as a valid answer value
+  const answer = answers[questionId] !== undefined && answers[questionId] !== null ? answers[questionId] : '';
 
   // Debug logging (remove in production if needed)
   if (process.env.NODE_ENV === 'development') {
@@ -473,15 +504,19 @@ function QuestionRenderer({ question, index, answers, onAnswerChange }) {
         
         {/* Main question options */}
         <div className={`grid grid-cols-1 ${options.length > 3 ? 'sm:grid-cols-2 lg:flex lg:gap-4' : 'sm:flex sm:gap-4'} gap-3 mb-6`}>
-          {options.map((option) => (
-            <RadioOption
-              key={option.value}
-              option={option}
-              questionId={questionId}
-              checked={String(answer) === String(option.value)}
-              onChange={(value) => onAnswerChange(questionId, value)}
-            />
-          ))}
+          {options.map((option) => {
+            // Use robust comparison function to handle 0, false, and other edge cases
+            const isChecked = isAnswerMatch(answer, option.value);
+            return (
+              <RadioOption
+                key={option.value}
+                option={option}
+                questionId={questionId}
+                checked={isChecked}
+                onChange={(value) => onAnswerChange(questionId, value)}
+              />
+            );
+          })}
         </div>
 
         {/* Sub-questions - conditionally shown based on answer */}
