@@ -1260,6 +1260,79 @@ function AdminAssessments() {
                         />
                       </div>
 
+                      {/* Image Upload UI - Commented out temporarily, will fix next time */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Assessment Image</label>
+                        {imagePreview ? (
+                          <div className="space-y-3">
+                            <div className="relative group">
+                              <img
+                                src={imagePreview}
+                                alt="Assessment preview"
+                                className="w-full h-48 object-cover rounded-lg border-2 border-gray-200"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setImagePreview('');
+                                  setCreateForm(prev => ({ ...prev, imageUrl: '' }));
+                                }}
+                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                                aria-label="Remove image"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                            <label className="cursor-pointer block">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="hidden"
+                                disabled={uploadingImage}
+                              />
+                              <div className={`w-full px-4 py-2 text-center text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                {uploadingImage ? 'Uploading...' : 'Change Image'}
+                              </div>
+                            </label>
+                          </div>
+                        ) : (
+                          <label className="cursor-pointer block">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                              disabled={uploadingImage}
+                            />
+                            <div className={`w-full p-4 border-2 border-dashed border-blue-300 rounded-lg bg-white hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                              <div className="flex flex-col items-center justify-center text-center">
+                                {uploadingImage ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3"></div>
+                                    <p className="text-sm font-medium text-gray-700">Uploading image...</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                                      <svg className="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                    <p className="text-sm font-medium text-gray-900 mb-1">Upload Assessment Image</p>
+                                    <p className="text-xs text-gray-500">Click to upload or drag and drop</p>
+                                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB</p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </label>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">Upload an image for your assessment (recommended: 800x600px)</p>
+                      </div>
+
                       <div className="md:col-span-2">
                         <label className="block text-sm font-medium text-gray-800 mb-2">Short Description</label>
                         <input

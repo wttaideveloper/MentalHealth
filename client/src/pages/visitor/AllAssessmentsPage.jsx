@@ -136,7 +136,7 @@ function AllAssessmentsPage() {
 
   // Format price for display
   const formatPrice = (price, mrp) => {
-    if (price === 0 || !price) return 'Free';
+    if (price === 0 || !price) return { current: 'Free', original: null };
     if (mrp && mrp > price) {
       return { current: `$${price}`, original: `$${mrp}` };
     }
