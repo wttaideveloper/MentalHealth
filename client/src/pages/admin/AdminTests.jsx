@@ -71,7 +71,29 @@ function AdminAssessments() {
     uploadJson: false,
     addQuestions: false,
     viewQuestions: false,
-    eligibility: false
+    eligibility: false,
+    scoringRules: false,
+    riskRules: false
+  });
+
+  // Scoring Rules UI State
+  const [scoringRulesState, setScoringRulesState] = useState({
+    type: 'sum', // 'sum' or 'weighted_sum'
+    items: [], // Array of question IDs to include (empty = all)
+    weights: {}, // Object: { q1: 2, q2: 1.5 }
+    bands: [], // Array: [{ min: 0, max: 10, label: 'Low' }]
+    subscales: {} // Object: { 'Anxiety': ['q1', 'q2'] }
+  });
+
+  // Risk Rules UI State
+  const [riskRulesState, setRiskRulesState] = useState({
+    triggers: [] // Array: [{ questionId: 'q4', condition: 'gte', value: 8, flag: 'high_stress', helpText: '...' }]
+  });
+
+  // Eligibility Rules UI State
+  const [eligibilityRulesState, setEligibilityRulesState] = useState({
+    enabled: false,
+    minAge: 18
   });
 
   useEffect(() => {
@@ -180,6 +202,10 @@ function AdminAssessments() {
         setEditingTestId(testId);
         setIsAddingNewCategory(false);
         setNewCategoryValue('');
+        // Load existing rules into UI state
+        setScoringRulesState(transformScoringRulesFromBackend(testData.scoringRules || {}));
+        setRiskRulesState(transformRiskRulesFromBackend(testData.riskRules || {}));
+        setEligibilityRulesState(transformEligibilityRulesFromBackend(testData.eligibilityRules || {}));
         // Reset current question form for adding new questions
         const questions = testData.schemaJson?.questions || [];
         const nextId = `q${questions.length + 1}`;
@@ -353,10 +379,18 @@ function AdminAssessments() {
       return;
     }
 
+    // Transform rules from UI state to backend format
+    const scoringRules = transformScoringRulesToBackend(scoringRulesState);
+    const riskRules = transformRiskRulesToBackend(riskRulesState);
+    const eligibilityRules = transformEligibilityRulesToBackend(eligibilityRulesState);
+
     // Update questionsCount based on actual questions
     const formData = {
       ...createForm,
-      questionsCount: createForm.schemaJson.questions.length
+      questionsCount: createForm.schemaJson.questions.length,
+      scoringRules,
+      riskRules,
+      eligibilityRules
     };
 
     try {
@@ -458,20 +492,24 @@ function AdminAssessments() {
       uploadJson: false,
       addQuestions: false,
       viewQuestions: false,
-      eligibility: false
+      eligibility: false,
+      scoringRules: false,
+      riskRules: false
     });
     setIsProcessingJson(false);
     setValidationErrors({ errors: [], warnings: [], questionErrors: {} });
     setIsAddingNewCategory(false);
     setNewCategoryValue('');
-    setOpenSections({
-      basicInfo: true,
-      pricing: false,
-      uploadJson: false,
-      addQuestions: false,
-      viewQuestions: false,
-      eligibility: false
+    // Reset rules states
+    setScoringRulesState({
+      type: 'sum',
+      items: [],
+      weights: {},
+      bands: [],
+      subscales: {}
     });
+    setRiskRulesState({ triggers: [] });
+    setEligibilityRulesState({ enabled: false, minAge: 18 });
   };
 
   const toggleSection = (section) => {
@@ -479,6 +517,143 @@ function AdminAssessments() {
       ...prev,
       [section]: !prev[section]
     }));
+  };
+
+  // Transformation functions: UI State → Backend Format
+  const transformScoringRulesToBackend = (uiState) => {
+    if (!uiState || uiState.type === 'sum' && !uiState.bands.length && !Object.keys(uiState.subscales).length && uiState.items.length === 0) {
+      return {};
+    }
+
+    const backend = {
+      type: uiState.type || 'sum'
+    };
+
+    if (uiState.items.length > 0) {
+      backend.items = uiState.items;
+    }
+
+    if (uiState.type === 'weighted_sum' && Object.keys(uiState.weights).length > 0) {
+      backend.weights = uiState.weights;
+    }
+
+    if (uiState.bands.length > 0) {
+      backend.bands = uiState.bands.map(band => ({
+        min: Number(band.min),
+        max: Number(band.max),
+        label: band.label || ''
+      }));
+    }
+
+    if (Object.keys(uiState.subscales).length > 0) {
+      backend.subscales = uiState.subscales;
+    }
+
+    return backend;
+  };
+
+  const transformRiskRulesToBackend = (uiState) => {
+    if (!uiState || !uiState.triggers || uiState.triggers.length === 0) {
+      return {};
+    }
+
+    const triggers = uiState.triggers.map(trigger => {
+      const backendTrigger = {
+        questionId: trigger.questionId,
+        flag: trigger.flag || 'risk',
+        helpText: trigger.helpText || ''
+      };
+
+      // Add condition based on condition type
+      if (trigger.condition === 'equals') {
+        backendTrigger.equals = Number(trigger.value);
+      } else if (trigger.condition === 'gte') {
+        backendTrigger.gte = Number(trigger.value);
+      } else if (trigger.condition === 'lte') {
+        backendTrigger.lte = Number(trigger.value);
+      }
+
+      return backendTrigger;
+    }).filter(t => t.questionId); // Filter out triggers without questionId
+
+    return triggers.length > 0 ? { triggers } : {};
+  };
+
+  const transformEligibilityRulesToBackend = (uiState) => {
+    if (!uiState || !uiState.enabled) {
+      return {};
+    }
+
+    return {
+      minAge: Number(uiState.minAge) || 18
+    };
+  };
+
+  // Reverse transformation: Backend Format → UI State
+  const transformScoringRulesFromBackend = (backendRules) => {
+    if (!backendRules || Object.keys(backendRules).length === 0) {
+      return {
+        type: 'sum',
+        items: [],
+        weights: {},
+        bands: [],
+        subscales: {}
+      };
+    }
+
+    return {
+      type: backendRules.type || 'sum',
+      items: Array.isArray(backendRules.items) ? backendRules.items : [],
+      weights: backendRules.weights || {},
+      bands: Array.isArray(backendRules.bands) ? backendRules.bands : [],
+      subscales: backendRules.subscales || {}
+    };
+  };
+
+  const transformRiskRulesFromBackend = (backendRules) => {
+    if (!backendRules || !backendRules.triggers || !Array.isArray(backendRules.triggers)) {
+      return { triggers: [] };
+    }
+
+    const triggers = backendRules.triggers.map(trigger => {
+      let condition = 'equals';
+      let value = 0;
+
+      if (trigger.equals !== undefined) {
+        condition = 'equals';
+        value = trigger.equals;
+      } else if (trigger.gte !== undefined) {
+        condition = 'gte';
+        value = trigger.gte;
+      } else if (trigger.lte !== undefined) {
+        condition = 'lte';
+        value = trigger.lte;
+      }
+
+      return {
+        questionId: trigger.questionId || '',
+        condition,
+        value,
+        flag: trigger.flag || 'risk',
+        helpText: trigger.helpText || ''
+      };
+    });
+
+    return { triggers };
+  };
+
+  const transformEligibilityRulesFromBackend = (backendRules) => {
+    if (!backendRules || !backendRules.minAge) {
+      return {
+        enabled: false,
+        minAge: 18
+      };
+    }
+
+    return {
+      enabled: true,
+      minAge: Number(backendRules.minAge) || 18
+    };
   };
 
   const buildShowIfCondition = () => {
@@ -2007,6 +2182,429 @@ function AdminAssessments() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section: Scoring Rules Configuration */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection('scoringRules')}
+                      className="w-full flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <h4 className="text-base sm:text-lg font-semibold text-gray-900 group-hover:text-gray-950">Scoring Rules Configuration</h4>
+                          <p className="text-xs sm:text-sm text-gray-500">Configure how scores are calculated and interpreted</p>
+                        </div>
+                      </div>
+                      <svg
+                        className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${openSections.scoringRules ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {openSections.scoringRules && (
+                    <div className="p-4 sm:p-6 space-y-6">
+                      {/* Scoring Method */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">
+                          Scoring Method
+                        </label>
+                        <select
+                          value={scoringRulesState.type}
+                          onChange={(e) => setScoringRulesState({ ...scoringRulesState, type: e.target.value })}
+                          className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        >
+                          <option value="sum">Simple Sum</option>
+                          <option value="weighted_sum">Weighted Sum</option>
+                        </select>
+                        <p className="text-xs text-gray-500 mt-2">
+                          {scoringRulesState.type === 'sum' 
+                            ? 'Scores are calculated by adding up all answer values' 
+                            : 'Scores are calculated using custom weights for each question'}
+                        </p>
+                      </div>
+
+                      {/* Weighted Weights Configuration */}
+                      {scoringRulesState.type === 'weighted_sum' && createForm.schemaJson.questions.length > 0 && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <label className="block text-sm font-semibold text-blue-900 mb-3">
+                            Question Weights
+                          </label>
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {createForm.schemaJson.questions.map((q) => (
+                              <div key={q.id} className="flex items-center gap-3 bg-white rounded-lg p-3 border border-blue-200">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-900 truncate">{q.id}</div>
+                                  <div className="text-xs text-gray-500 truncate">{q.text}</div>
+                                </div>
+                                <div className="w-24">
+                                  <input
+                                    type="number"
+                                    value={scoringRulesState.weights[q.id] || 1}
+                                    onChange={(e) => {
+                                      const newWeights = { ...scoringRulesState.weights };
+                                      const value = Number(e.target.value);
+                                      if (value > 0) {
+                                        newWeights[q.id] = value;
+                                      } else {
+                                        delete newWeights[q.id];
+                                      }
+                                      setScoringRulesState({ ...scoringRulesState, weights: newWeights });
+                                    }}
+                                    min="0.1"
+                                    step="0.1"
+                                    placeholder="1"
+                                    className="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-xs text-blue-700 mt-3">Set weight multiplier for each question. Default weight is 1.</p>
+                        </div>
+                      )}
+
+                      {/* Score Bands */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="block text-sm font-medium text-gray-800">
+                            Score Bands (for interpretation)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setScoringRulesState({
+                                ...scoringRulesState,
+                                bands: [...scoringRulesState.bands, { min: 0, max: 10, label: '' }]
+                              });
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Band
+                          </button>
+                        </div>
+                        <div className="space-y-3">
+                          {scoringRulesState.bands.map((band, index) => (
+                            <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                              <div className="flex-1 grid grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Min</label>
+                                  <input
+                                    type="number"
+                                    value={band.min}
+                                    onChange={(e) => {
+                                      const newBands = [...scoringRulesState.bands];
+                                      newBands[index].min = Number(e.target.value) || 0;
+                                      setScoringRulesState({ ...scoringRulesState, bands: newBands });
+                                    }}
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Max</label>
+                                  <input
+                                    type="number"
+                                    value={band.max}
+                                    onChange={(e) => {
+                                      const newBands = [...scoringRulesState.bands];
+                                      newBands[index].max = Number(e.target.value) || 0;
+                                      setScoringRulesState({ ...scoringRulesState, bands: newBands });
+                                    }}
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">Label</label>
+                                  <input
+                                    type="text"
+                                    value={band.label}
+                                    onChange={(e) => {
+                                      const newBands = [...scoringRulesState.bands];
+                                      newBands[index].label = e.target.value;
+                                      setScoringRulesState({ ...scoringRulesState, bands: newBands });
+                                    }}
+                                    placeholder="e.g., Low, Moderate"
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  />
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newBands = scoringRulesState.bands.filter((_, i) => i !== index);
+                                  setScoringRulesState({ ...scoringRulesState, bands: newBands });
+                                }}
+                                className="text-red-400 hover:text-red-600 transition-colors"
+                              >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                          {scoringRulesState.bands.length === 0 && (
+                            <p className="text-sm text-gray-500 text-center py-4">No score bands configured. Click "Add Band" to create one.</p>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">Score bands help interpret results (e.g., 0-10 = Low, 11-20 = Moderate)</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section: Risk Rules Configuration */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection('riskRules')}
+                      className="w-full flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        </div>
+                        <div className="text-left">
+                          <h4 className="text-base sm:text-lg font-semibold text-gray-900 group-hover:text-gray-950">Risk Rules Configuration</h4>
+                          <p className="text-xs sm:text-sm text-gray-500">Set up triggers for risk detection and safety alerts</p>
+                        </div>
+                      </div>
+                      <svg
+                        className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${openSections.riskRules ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {openSections.riskRules && (
+                    <div className="p-4 sm:p-6 space-y-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-sm text-gray-600">Configure risk triggers that will flag concerning responses</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRiskRulesState({
+                              ...riskRulesState,
+                              triggers: [...riskRulesState.triggers, {
+                                questionId: '',
+                                condition: 'gte',
+                                value: 0,
+                                flag: '',
+                                helpText: ''
+                              }]
+                            });
+                          }}
+                          className="text-sm text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                          Add Trigger
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {riskRulesState.triggers.map((trigger, index) => (
+                          <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h5 className="text-sm font-semibold text-red-900">Risk Trigger #{index + 1}</h5>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newTriggers = riskRulesState.triggers.filter((_, i) => i !== index);
+                                  setRiskRulesState({ ...riskRulesState, triggers: newTriggers });
+                                }}
+                                className="text-red-400 hover:text-red-600 transition-colors"
+                              >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-800 mb-2">Question</label>
+                                <select
+                                  value={trigger.questionId}
+                                  onChange={(e) => {
+                                    const newTriggers = [...riskRulesState.triggers];
+                                    newTriggers[index].questionId = e.target.value;
+                                    setRiskRulesState({ ...riskRulesState, triggers: newTriggers });
+                                  }}
+                                  className="w-full px-3 py-2 bg-white border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                                >
+                                  <option value="">Select a question...</option>
+                                  {createForm.schemaJson.questions.map((q) => (
+                                    <option key={q.id} value={q.id}>{q.id}: {q.text.substring(0, 50)}...</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-800 mb-2">Condition</label>
+                                  <select
+                                    value={trigger.condition}
+                                    onChange={(e) => {
+                                      const newTriggers = [...riskRulesState.triggers];
+                                      newTriggers[index].condition = e.target.value;
+                                      setRiskRulesState({ ...riskRulesState, triggers: newTriggers });
+                                    }}
+                                    className="w-full px-3 py-2 bg-white border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                                  >
+                                    <option value="equals">Equals (=)</option>
+                                    <option value="gte">Greater than or equal (≥)</option>
+                                    <option value="lte">Less than or equal (≤)</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-800 mb-2">Value</label>
+                                  <input
+                                    type="number"
+                                    value={trigger.value}
+                                    onChange={(e) => {
+                                      const newTriggers = [...riskRulesState.triggers];
+                                      newTriggers[index].value = Number(e.target.value) || 0;
+                                      setRiskRulesState({ ...riskRulesState, triggers: newTriggers });
+                                    }}
+                                    className="w-full px-3 py-2 bg-white border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-800 mb-2">Flag Name</label>
+                              <input
+                                type="text"
+                                value={trigger.flag}
+                                onChange={(e) => {
+                                  const newTriggers = [...riskRulesState.triggers];
+                                  newTriggers[index].flag = e.target.value;
+                                  setRiskRulesState({ ...riskRulesState, triggers: newTriggers });
+                                }}
+                                placeholder="e.g., high_anxiety, self_harm"
+                                className="w-full px-3 py-2 bg-white border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-800 mb-2">Help Text (shown when triggered)</label>
+                              <textarea
+                                value={trigger.helpText}
+                                onChange={(e) => {
+                                  const newTriggers = [...riskRulesState.triggers];
+                                  newTriggers[index].helpText = e.target.value;
+                                  setRiskRulesState({ ...riskRulesState, triggers: newTriggers });
+                                }}
+                                rows="3"
+                                placeholder="Provide safety information and support resources..."
+                                className="w-full px-3 py-2 bg-white border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm resize-none"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        {riskRulesState.triggers.length === 0 && (
+                          <p className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+                            No risk triggers configured. Click "Add Trigger" to create one.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section: Eligibility Rules Configuration */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-base sm:text-lg font-semibold text-gray-900">Eligibility Rules Configuration</h4>
+                        <p className="text-xs sm:text-sm text-gray-500">Set age or other eligibility requirements</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 sm:p-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              checked={eligibilityRulesState.enabled}
+                              onChange={(e) => setEligibilityRulesState({ ...eligibilityRulesState, enabled: e.target.checked })}
+                              className="sr-only"
+                            />
+                            <div className={`w-10 h-6 rounded-full transition-all duration-300 ${eligibilityRulesState.enabled
+                              ? 'bg-green-500'
+                              : 'bg-gray-300'
+                            }`}>
+                              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${eligibilityRulesState.enabled
+                                ? 'left-5'
+                                : 'left-1'
+                              }`} />
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-sm font-medium text-gray-700">Enable Age Requirement</span>
+                            <p className="text-xs text-gray-500">Restrict test access based on minimum age</p>
+                          </div>
+                        </label>
+                      </div>
+
+                      {eligibilityRulesState.enabled && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                          <label className="block text-sm font-medium text-gray-800 mb-2">
+                            Minimum Age (years)
+                          </label>
+                          <input
+                            type="number"
+                            value={eligibilityRulesState.minAge}
+                            onChange={(e) => setEligibilityRulesState({ ...eligibilityRulesState, minAge: Number(e.target.value) || 18 })}
+                            min="1"
+                            max="100"
+                            className="w-full px-4 py-3 bg-white border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                          />
+                          <p className="text-xs text-green-700 mt-2">
+                            Users must be at least {eligibilityRulesState.minAge} years old to take this assessment.
+                          </p>
+                        </div>
+                      )}
+
+                      {!eligibilityRulesState.enabled && (
+                        <p className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded-lg border border-gray-200">
+                          No eligibility restrictions. All users can take this assessment.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -1,0 +1,193 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "text": "How would you describe your current mood? (radio)",
+      "type": "radio",
+      "required": true,
+      "options": [
+        { "value": 1, "label": "Very positive" },
+        { "value": 2, "label": "Somewhat positive" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Somewhat negative" },
+        { "value": 5, "label": "Very negative" }
+      ],
+      "subQuestions": [
+        {
+          "id": "q1_sub1",
+          "text": "What activities contribute to your positive mood?",
+          "type": "checkbox",
+          "show_if": {
+            "questionId": "q1",
+            "in": [1, 2]
+          },
+          "options": [
+            { "value": 1, "label": "Exercise" },
+            { "value": 2, "label": "Social activities" },
+            { "value": 3, "label": "Hobbies" },
+            { "value": 4, "label": "Work achievements" }
+          ]
+        },
+        {
+          "id": "q1_sub2",
+          "text": "What factors might be affecting your neutral mood?",
+          "type": "text",
+          "show_if": {
+            "questionId": "q1",
+            "equals": 3
+          },
+          "maxLength": 200
+        },
+        {
+          "id": "q1_sub3",
+          "text": "What factors contribute to your negative mood?",
+          "type": "checkbox",
+          "show_if": {
+            "questionId": "q1",
+            "in": [4, 5]
+          },
+          "options": [
+            { "value": 1, "label": "Work-related stress" },
+            { "value": 2, "label": "Relationship issues" },
+            { "value": 3, "label": "Financial concerns" },
+            { "value": 4, "label": "Health problems" },
+            { "value": 5, "label": "Other" }
+          ]
+        },
+        {
+          "id": "q1_sub4",
+          "text": "If you selected 'Other' above, please specify:",
+          "type": "textarea",
+          "show_if": {
+            "questionId": "q1_sub3",
+            "in": [5]
+          },
+          "rows": 3,
+          "maxLength": 300
+        }
+      ]
+    },
+    {
+      "id": "q2",
+      "text": "How often do you experience anxiety? (radio)",
+      "type": "radio",
+      "required": true,
+      "options": [
+        { "value": 0, "label": "Never" },
+        { "value": 1, "label": "Rarely" },
+        { "value": 2, "label": "Sometimes" },
+        { "value": 3, "label": "Often" },
+        { "value": 4, "label": "Always" }
+      ],
+      "subQuestions": [
+        {
+          "id": "q2_sub1",
+          "text": "Great! It's wonderful that you don't experience anxiety. What helps you maintain this?",
+          "type": "textarea",
+          "show_if": {
+            "questionId": "q2",
+            "equals": 0
+          },
+          "rows": 4,
+          "maxLength": 400
+        },
+        {
+          "id": "q2_sub2",
+          "text": "When you experience anxiety rarely, what situations trigger it?",
+          "type": "text",
+          "show_if": {
+            "questionId": "q2",
+            "equals": 1
+          },
+          "maxLength": 150
+        },
+        {
+          "id": "q2_sub3",
+          "text": "How do you manage your anxiety when it occurs?",
+          "type": "checkbox",
+          "show_if": {
+            "questionId": "q2",
+            "in": [2, 3, 4]
+          },
+          "options": [
+            { "value": 1, "label": "Deep breathing exercises" },
+            { "value": 2, "label": "Meditation" },
+            { "value": 3, "label": "Physical exercise" },
+            { "value": 4, "label": "Talking to someone" },
+            { "value": 5, "label": "Medication" },
+            { "value": 6, "label": "Other coping strategies" }
+          ]
+        },
+        {
+          "id": "q2_sub4",
+          "text": "On a scale of 1-10, how severe is your anxiety when it occurs?",
+          "type": "numeric",
+          "show_if": {
+            "questionId": "q2",
+            "in": [3, 4]
+          },
+          "min": 1,
+          "max": 10,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "q3",
+      "text": "Have you sought professional help for mental health? (boolean)",
+      "type": "boolean",
+      "required": true,
+      "subQuestions": [
+        {
+          "id": "q3_sub1",
+          "text": "What type of professional help have you received?",
+          "type": "checkbox",
+          "show_if": {
+            "questionId": "q3",
+            "equals": true
+          },
+          "options": [
+            { "value": 1, "label": "Psychologist" },
+            { "value": 2, "label": "Psychiatrist" },
+            { "value": 3, "label": "Counselor" },
+            { "value": 4, "label": "Therapist" },
+            { "value": 5, "label": "Other" }
+          ]
+        },
+        {
+          "id": "q3_sub2",
+          "text": "How helpful has the professional help been?",
+          "type": "likert",
+          "show_if": {
+            "questionId": "q3",
+            "equals": true
+          },
+          "options": [
+            { "value": 1, "label": "Not helpful at all" },
+            { "value": 2, "label": "Slightly helpful" },
+            { "value": 3, "label": "Moderately helpful" },
+            { "value": 4, "label": "Very helpful" },
+            { "value": 5, "label": "Extremely helpful" }
+          ]
+        },
+        {
+          "id": "q3_sub3",
+          "text": "What factors prevent you from seeking professional help?",
+          "type": "checkbox",
+          "show_if": {
+            "questionId": "q3",
+            "equals": false
+          },
+          "options": [
+            { "value": 1, "label": "Cost concerns" },
+            { "value": 2, "label": "Lack of time" },
+            { "value": 3, "label": "Stigma or embarrassment" },
+            { "value": 4, "label": "Not sure where to find help" },
+            { "value": 5, "label": "Prefer to handle it myself" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
