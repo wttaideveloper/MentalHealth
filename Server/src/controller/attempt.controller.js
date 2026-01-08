@@ -271,6 +271,12 @@ exports.submit = asyncHandler(async (req, res) => {
   // Calculate score using scoring service
   const scoreResult = computeScore(testDoc.scoringRules, finalAnswers);
   
+  // Debug logging for scoring rules
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('Scoring Rules:', JSON.stringify(testDoc.scoringRules, null, 2));
+    console.log('Score Result:', JSON.stringify(scoreResult, null, 2));
+  }
+  
   // Evaluate risk using risk service
   const riskResult = evaluateRisk(testDoc.riskRules, finalAnswers);
   
