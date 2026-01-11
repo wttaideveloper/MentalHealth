@@ -10,20 +10,24 @@ COPY package*.json ./
 RUN npm ci && \
     npm cache clean --force
 
-# Copy source code
+# Copy .env file first (contains VITE_* variables)
+COPY .env* ./
+
 COPY . .
 
-# Build arguments for environment variables
+# Build arguments for environment variables (for compatibility with docker-compose args)
 ARG VITE_API_BASE_URL
 ARG VITE_APP_NAME
 ARG VITE_RAZORPAY_KEY_ID
 
-# Create .env file from build args
-RUN echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env && \
-    echo "VITE_APP_NAME=${VITE_APP_NAME}" >> .env && \
-    echo "VITE_RAZORPAY_KEY_ID=${VITE_RAZORPAY_KEY_ID}" >> .env
+# Override .env with build args if provided (allows docker-compose to override)
+RUN if [ ! -z "$VITE_API_BASE_URL" ]; then \
+      echo "VITE_API_BASE_URL=${VITE_API_BASE_URL}" > .env && \
+      echo "VITE_APP_NAME=${VITE_APP_NAME}" >> .env && \
+      echo "VITE_RAZORPAY_KEY_ID=${VITE_RAZORPAY_KEY_ID}" >> .env; \
+    fi
 
-# Build the application
+# Build the application (Vite will read from .env file)
 RUN npm run build
 
 # Stage 2: Serve with Nginx
