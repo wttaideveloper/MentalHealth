@@ -117,17 +117,7 @@ services:
 # Named volumes for data persistence
 volumes:
   uploads_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${UPLOADS_PATH:-./data/uploads}
   generated_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${GENERATED_PATH:-./data/generated}
   nginx_cache:
 
 # Network for inter-service communication
