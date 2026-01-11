@@ -25,7 +25,14 @@ const uploadRoutes = require("./routes/upload.routes");
 async function createApp() {
   const app = express();
 
-  app.use(cors({ origin: cfg.CORS_ORIGIN, credentials: true }));
+  const allowedOrigins = cfg.CORS_ORIGIN
+    ? cfg.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : ['http://localhost:3000'];
+
+  app.use(cors({
+    origin: allowedOrigins,
+    credentials: true
+  }));
   
   // Serve uploaded files BEFORE helmet to avoid CSP issues
   // This route needs to be before helmet middleware
