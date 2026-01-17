@@ -115,7 +115,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .phone-input-wrapper .PhoneInputCountryIcon {
@@ -125,6 +125,7 @@ body {
   background-color: var(--color-white);
   border-radius: 2px;
   flex-shrink: 0;
+  pointer-events: none;
 }
 
 .phone-input-wrapper .PhoneInputCountrySelect {
@@ -132,12 +133,19 @@ body {
   top: 0;
   left: 0;
   height: 100%;
-  width: 60px;
-  z-index: 3;
+  min-width: 60px;
+  width: auto;
+  z-index: 10;
   border: 0;
   opacity: 0;
   cursor: pointer;
   background: transparent;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.phone-input-wrapper .PhoneInputCountrySelect:focus {
+  outline: none;
 }
 
 .phone-input-wrapper .PhoneInputCountrySelectArrow {
@@ -163,7 +171,9 @@ body {
   }
   
   .phone-input-wrapper .PhoneInputCountrySelect {
-    width: 56px;
+    min-width: 56px;
+    width: auto;
+    padding-right: 24px;
   }
 }
 
@@ -188,11 +198,62 @@ body {
   }
   
   .phone-input-wrapper .PhoneInputCountrySelect {
-    width: 52px;
+    min-width: 52px;
+    width: auto;
+    padding-right: 20px;
+    min-height: 44px; /* Better touch target for mobile */
   }
   
   .phone-input-wrapper .PhoneInputCountrySelectArrow {
     border-width: 3px 2px 0 2px;
+  }
+}
+
+/* Ensure country dropdown is accessible and visible */
+.PhoneInputCountryIcon--border {
+  border-radius: 2px;
+}
+
+.PhoneInputCountryIconImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Fix for country dropdown menu */
+.PhoneInputCountrySelect {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Improve dropdown visibility and interaction on mobile */
+@media (max-width: 640px) {
+  .PhoneInputCountry {
+    min-width: 50px;
+    min-height: 44px; /* Better touch target */
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  
+  .PhoneInputCountrySelect {
+    min-height: 44px; /* iOS recommended touch target */
+    min-width: 50px;
+  }
+}
+
+/* DatePicker Select Dropdown Styling */
+/* Fix for select options being clickable */
+select option {
+  cursor: pointer;
+  padding: 8px 12px;
+}
+
+/* Ensure selects work properly on mobile */
+@media (max-width: 640px) {
+  select {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 }
 

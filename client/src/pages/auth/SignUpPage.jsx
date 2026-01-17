@@ -208,6 +208,14 @@ function SignUpPage() {
                       placeholder="Enter your mobile number"
                       className="phone-input-wrapper w-full"
                       inputClassName="w-full"
+                      numberInputProps={{
+                        className: "w-full"
+                      }}
+                      countrySelectProps={{
+                        className: "country-select"
+                      }}
+                      countries={undefined}
+                      withCountryCallingCode={true}
                     />
                   </div>
                 </div>
