@@ -68,6 +68,8 @@ function AdminAssessments() {
   const [availableCategories, setAvailableCategories] = useState([]);
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryValue, setNewCategoryValue] = useState('');
+  const [isAddingScoringCategory, setIsAddingScoringCategory] = useState(false);
+  const [newScoringCategoryValue, setNewScoringCategoryValue] = useState('');
   const [openSections, setOpenSections] = useState({
     basicInfo: true,
     pricing: false,
@@ -206,6 +208,8 @@ function AdminAssessments() {
         setEditingTestId(testId);
         setIsAddingNewCategory(false);
         setNewCategoryValue('');
+        setIsAddingScoringCategory(false);
+        setNewScoringCategoryValue('');
         // Load existing rules into UI state
         setScoringRulesState(transformScoringRulesFromBackend(testData.scoringRules || {}));
         setRiskRulesState(transformRiskRulesFromBackend(testData.riskRules || {}));
@@ -504,6 +508,8 @@ function AdminAssessments() {
     setValidationErrors({ errors: [], warnings: [], questionErrors: {} });
     setIsAddingNewCategory(false);
     setNewCategoryValue('');
+    setIsAddingScoringCategory(false);
+    setNewScoringCategoryValue('');
     // Reset rules states
     setScoringRulesState({
       type: 'sum',
@@ -2762,30 +2768,97 @@ function AdminAssessments() {
                           <label className="block text-sm font-medium text-gray-800">
                             Category Results (for multi-category assessments like DASS-21)
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const categoryName = prompt('Enter category name (e.g., Depression, Anxiety, Stress):');
-                              if (categoryName && categoryName.trim()) {
-                                setScoringRulesState({
-                                  ...scoringRulesState,
-                                  categories: {
-                                    ...scoringRulesState.categories,
-                                    [categoryName.trim()]: {
-                                      items: [],
-                                      bands: []
+                          {!isAddingScoringCategory ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAddingScoringCategory(true);
+                                setNewScoringCategoryValue('');
+                              }}
+                              className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              Add Category
+                            </button>
+                          ) : (
+                            <div className="flex gap-2 items-center">
+                              <input
+                                type="text"
+                                value={newScoringCategoryValue}
+                                onChange={(e) => setNewScoringCategoryValue(e.target.value)}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (newScoringCategoryValue.trim()) {
+                                      const categoryName = newScoringCategoryValue.trim();
+                                      // Check if category already exists
+                                      if (scoringRulesState.categories && scoringRulesState.categories[categoryName]) {
+                                        showToast.error('Category already exists. Please use a different name.');
+                                        return;
+                                      }
+                                      setScoringRulesState({
+                                        ...scoringRulesState,
+                                        categories: {
+                                          ...scoringRulesState.categories,
+                                          [categoryName]: {
+                                            items: [],
+                                            bands: []
+                                          }
+                                        }
+                                      });
+                                      setIsAddingScoringCategory(false);
+                                      setNewScoringCategoryValue('');
+                                      showToast.success(`Category "${categoryName}" added successfully`);
                                     }
                                   }
-                                });
-                              }
-                            }}
-                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                          >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            Add Category
-                          </button>
+                                }}
+                                className="px-3 py-2 text-sm bg-white border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 w-48"
+                                placeholder="e.g., Depression, Anxiety, Stress"
+                                autoFocus
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (newScoringCategoryValue.trim()) {
+                                    const categoryName = newScoringCategoryValue.trim();
+                                    // Check if category already exists
+                                    if (scoringRulesState.categories && scoringRulesState.categories[categoryName]) {
+                                      showToast.error('Category already exists. Please use a different name.');
+                                      return;
+                                    }
+                                    setScoringRulesState({
+                                      ...scoringRulesState,
+                                      categories: {
+                                        ...scoringRulesState.categories,
+                                        [categoryName]: {
+                                          items: [],
+                                          bands: []
+                                        }
+                                      }
+                                    });
+                                    setIsAddingScoringCategory(false);
+                                    setNewScoringCategoryValue('');
+                                    showToast.success(`Category "${categoryName}" added successfully`);
+                                  }
+                                }}
+                                className="px-3 py-2 text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 whitespace-nowrap font-medium"
+                              >
+                                Add
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsAddingScoringCategory(false);
+                                  setNewScoringCategoryValue('');
+                                }}
+                                className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500 mb-4">Configure categories (e.g., Depression, Anxiety, Stress) with their questions and severity bands. Each category will show separate results with bands.</p>
                         
