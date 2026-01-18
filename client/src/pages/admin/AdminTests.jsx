@@ -63,6 +63,7 @@ function AdminAssessments() {
   const [isProcessingJson, setIsProcessingJson] = useState(false);
   const [jsonInputMode, setJsonInputMode] = useState('upload'); // 'upload' or 'paste'
   const [jsonPasteValue, setJsonPasteValue] = useState('');
+  const [editingQuestionIndex, setEditingQuestionIndex] = useState(null); // Track which question is being edited inline
   const [validationErrors, setValidationErrors] = useState({ errors: [], warnings: [], questionErrors: {} });
   const [availableCategories, setAvailableCategories] = useState([]);
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
@@ -807,10 +808,46 @@ function AdminAssessments() {
     };
     setCreateForm(updatedForm);
     showToast.success('Question removed');
+    setEditingQuestionIndex(null); // Clear editing state
 
     // Trigger validation after removing question
     const validation = validateTestData(updatedForm);
     setValidationErrors(validation);
+  };
+
+  // Update question in place
+  const updateQuestion = (index, updatedQuestion) => {
+    const newQuestions = [...createForm.schemaJson.questions];
+    newQuestions[index] = { ...newQuestions[index], ...updatedQuestion };
+    setCreateForm({
+      ...createForm,
+      schemaJson: {
+        ...createForm.schemaJson,
+        questions: newQuestions
+      }
+    });
+  };
+
+  // Update option for a question
+  const updateQuestionOption = (questionIndex, optionIndex, updatedOption) => {
+    const question = createForm.schemaJson.questions[questionIndex];
+    const newOptions = [...(question.options || [])];
+    newOptions[optionIndex] = { ...newOptions[optionIndex], ...updatedOption };
+    updateQuestion(questionIndex, { options: newOptions });
+  };
+
+  // Add option to a question in preview
+  const addOptionToQuestion = (questionIndex) => {
+    const question = createForm.schemaJson.questions[questionIndex];
+    const newOptions = [...(question.options || []), { value: 0, label: '' }];
+    updateQuestion(questionIndex, { options: newOptions });
+  };
+
+  // Remove option from a question in preview
+  const removeOptionFromQuestion = (questionIndex, optionIndex) => {
+    const question = createForm.schemaJson.questions[questionIndex];
+    const newOptions = (question.options || []).filter((_, i) => i !== optionIndex);
+    updateQuestion(questionIndex, { options: newOptions });
   };
 
   const handleValidateSchema = () => {
@@ -3227,56 +3264,151 @@ function AdminAssessments() {
                     <div className="p-4 sm:p-6">
                       <div className="space-y-4">
                         {createForm.schemaJson.questions.map((q, idx) => (
-                          <div key={idx} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-all duration-200">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <span className="text-sm font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded">
-                                    Q{q.order || idx + 1}
-                                  </span>
-                                  <span className="text-sm text-gray-500">ID: {q.id}</span>
-                                  {q.required && (
-                                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                                      Required
-                                    </span>
-                                  )}
-                                  {q.isCritical && (
-                                    <span className="text-xs font-medium text-red-600 bg-red-50 px-2 py-1 rounded-full">
-                                      Critical
-                                    </span>
+                          <div key={idx} className={`bg-white border-2 rounded-lg p-4 transition-all duration-200 ${editingQuestionIndex === idx ? 'border-blue-500 shadow-md' : 'border-gray-200 hover:border-gray-300'}`}>
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-3 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-900 bg-gray-100 px-2 py-1 rounded">
+                                  Q{q.order || idx + 1}
+                                </span>
+                                <span className="text-sm text-gray-500">ID: {q.id}</span>
+                                <label className="flex items-center gap-2 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={q.required || false}
+                                    onChange={(e) => updateQuestion(idx, { required: e.target.checked })}
+                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                  />
+                                  <span className="text-gray-700">Required</span>
+                                </label>
+                                <label className="flex items-center gap-2 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={q.isCritical || false}
+                                    onChange={(e) => updateQuestion(idx, { isCritical: e.target.checked })}
+                                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                  />
+                                  <span className="text-gray-700">Critical</span>
+                                </label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (editingQuestionIndex === idx) {
+                                      setEditingQuestionIndex(null);
+                                    } else {
+                                      setEditingQuestionIndex(idx);
+                                    }
+                                  }}
+                                  className={`text-sm px-3 py-1 rounded transition-colors ${
+                                    editingQuestionIndex === idx
+                                      ? 'bg-gray-100 text-gray-700'
+                                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                                  }`}
+                                >
+                                  {editingQuestionIndex === idx ? 'Done' : 'Edit'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removeQuestion(idx)}
+                                  className="text-gray-400 hover:text-red-500 transition-colors"
+                                >
+                                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Question Text - Editable */}
+                            <div className="mb-3">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Question Text</label>
+                              {editingQuestionIndex === idx ? (
+                                <textarea
+                                  value={q.text}
+                                  onChange={(e) => updateQuestion(idx, { text: e.target.value })}
+                                  rows="2"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  placeholder="Enter question text"
+                                />
+                              ) : (
+                                <p className="text-gray-800">{q.text}</p>
+                              )}
+                            </div>
+
+                            {/* Options - Editable */}
+                            {q.options && q.options.length > 0 && (
+                              <div className="mb-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <label className="text-xs font-medium text-gray-700">Options</label>
+                                  {editingQuestionIndex === idx && (
+                                    <button
+                                      type="button"
+                                      onClick={() => addOptionToQuestion(idx)}
+                                      className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                    >
+                                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                      </svg>
+                                      Add Option
+                                    </button>
                                   )}
                                 </div>
-                                <p className="text-gray-800 mb-3">{q.text}</p>
+                                <div className="space-y-2">
+                                  {q.options.map((opt, optIdx) => (
+                                    editingQuestionIndex === idx ? (
+                                      <div key={optIdx} className="flex gap-2 items-center bg-gray-50 rounded-lg p-2">
+                                        <input
+                                          type="number"
+                                          value={opt.value}
+                                          onChange={(e) => updateQuestionOption(idx, optIdx, { value: Number(e.target.value) || 0 })}
+                                          placeholder="Value"
+                                          className="w-20 px-2 py-1 border border-gray-300 rounded text-xs"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={opt.label}
+                                          onChange={(e) => updateQuestionOption(idx, optIdx, { label: e.target.value })}
+                                          placeholder="Option label"
+                                          className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => removeOptionFromQuestion(idx, optIdx)}
+                                          className="text-red-400 hover:text-red-600 text-xs"
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div key={optIdx} className="text-xs bg-gray-50 border border-gray-200 rounded px-3 py-1.5 inline-block mr-2 mb-2">
+                                        <span className="font-semibold text-amber-600">[{opt.value}]</span>
+                                        <span className="text-gray-700 ml-2">{opt.label}</span>
+                                      </div>
+                                    )
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
-                                {q.options && q.options.length > 0 && (
-                                  <div className="bg-gray-50 rounded-lg p-3">
-                                    <p className="text-xs font-medium text-gray-700 mb-2">Options:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {q.options.map((opt, optIdx) => (
-                                        <div key={optIdx} className="text-xs bg-white border border-gray-200 rounded px-3 py-1.5">
-                                          <span className="font-semibold text-amber-600">[{opt.value}]</span>
-                                          <span className="text-gray-700 ml-2">{opt.label}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {q.helpText && (
-                                  <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                            {/* Help Text - Editable */}
+                            <div className="mb-3">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Help Text (Optional)</label>
+                              {editingQuestionIndex === idx ? (
+                                <textarea
+                                  value={q.helpText || ''}
+                                  onChange={(e) => updateQuestion(idx, { helpText: e.target.value })}
+                                  rows="2"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                  placeholder="Optional help text for this question"
+                                />
+                              ) : (
+                                q.helpText && (
+                                  <div className="p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
                                     <span className="font-medium">Help:</span> {q.helpText}
                                   </div>
-                                )}
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeQuestion(idx)}
-                                className="text-gray-400 hover:text-red-500 transition-colors ml-4"
-                              >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
+                                )
+                              )}
                             </div>
                           </div>
                         ))}

@@ -678,23 +678,6 @@
     }
   },
   
-  "riskRules": {
-    "triggers": [
-      {
-        "questionId": "dass_q21",
-        "gte": 3,
-        "flag": "suicidal_ideation",
-        "helpText": "If you're experiencing thoughts that life is meaningless or having thoughts of self-harm, please reach out for immediate help. Contact a mental health professional, crisis helpline, or emergency services."
-      },
-      {
-        "questionId": "dass_q17",
-        "gte": 3,
-        "flag": "self_worth",
-        "helpText": "If you're experiencing feelings of worthlessness, please consider speaking with a mental health professional. You deserve support and care."
-      }
-    ],
-    "helpText": "If you're experiencing significant distress, please consider reaching out to a mental health professional for support and guidance."
-  },
   
   "isActive": true,
   "popularityScore": 100
