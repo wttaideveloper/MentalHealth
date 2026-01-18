@@ -225,6 +225,59 @@ function AssessmentTestResultPage() {
         </div>
       )}
 
+      {/* Category Results Section */}
+      {result.categoryResults && Object.keys(result.categoryResults).length > 0 && (
+        <div className="bg-white rounded-lg p-6 border border-gray-200 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">Category Results</h2>
+          <div className="space-y-6">
+            {Object.entries(result.categoryResults).map(([categoryName, categoryData]) => {
+              // Handle both Map structure (from Mongoose) and plain object
+              const categoryInfo = categoryData && typeof categoryData === 'object' 
+                ? categoryData 
+                : { score: categoryData };
+              
+              return (
+                <div key={categoryName} className="border border-gray-200 rounded-lg p-5">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 sm:mb-0">{categoryName}</h3>
+                    {categoryInfo.band && (
+                      <span className={`px-4 py-2 rounded-full text-sm font-medium ${getBandColorClass(categoryInfo.band)}`}>
+                        {categoryInfo.band}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Score</div>
+                      <div className="text-2xl font-bold text-gray-900">{categoryInfo.score || 0}</div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Questions</div>
+                      <div className="text-lg text-gray-900">
+                        {categoryInfo.answeredCount || 0} / {categoryInfo.totalItems || 0}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-sm text-gray-600 mb-1">Severity Level</div>
+                      <div className={`text-lg font-medium ${getBandColorClass(categoryInfo.band)}`}>
+                        {categoryInfo.band || "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {categoryInfo.bandDescription && (
+                    <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-blue-800 text-sm leading-relaxed">{categoryInfo.bandDescription}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Progress Bar */}
       {result.interpretation && result.interpretation.answeredCount !== undefined && result.interpretation.totalItems !== undefined && (
         <div className="mb-8">

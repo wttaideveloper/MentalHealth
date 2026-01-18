@@ -19,11 +19,17 @@ function safeNumber(v) {
  *   "items":["q1","q2","q3"],
  *   "bands":[{"min":0,"max":5,"label":"Low"},{"min":6,"max":10,"label":"Moderate"}],
  *   "subscales": { "A":["q1","q2"], "B":["q3"] },
- *   "weights": { "q1": 2, "q2": 1 }
+ *   "weights": { "q1": 2, "q2": 1 },
+ *   "categories": {
+ *     "Depression": {
+ *       "items": ["q1","q2"],
+ *       "bands": [{"min":0,"max":9,"label":"Normal"},{"min":10,"max":13,"label":"Mild"}]
+ *     }
+ *   }
  * }
  * @param {Object} scoringRules - Scoring configuration
  * @param {Object} answersObj - User's answers object
- * @returns {Object} - Score result with score, band, and subscales
+ * @returns {Object} - Score result with score, band, subscales, and categoryResults
  */
 function computeScore(scoringRules, answersObj) {
   const rules = scoringRules || {};
@@ -60,7 +66,7 @@ function computeScore(scoringRules, answersObj) {
     }
   }
 
-  // Calculate subscales
+  // Calculate subscales (backward compatibility)
   const subscalesOut = {};
   if (rules.subscales && typeof rules.subscales === "object") {
     for (const subKey of Object.keys(rules.subscales)) {
@@ -69,7 +75,54 @@ function computeScore(scoringRules, answersObj) {
     }
   }
 
-  // Find band label based on score
+  // Calculate category results with bands
+  const categoryResults = {};
+  if (rules.categories && typeof rules.categories === "object") {
+    for (const categoryName of Object.keys(rules.categories)) {
+      const categoryConfig = rules.categories[categoryName];
+      const categoryItems = Array.isArray(categoryConfig.items) ? categoryConfig.items : [];
+      
+      // Calculate category score
+      let categoryScore = 0;
+      let categoryAnsweredCount = 0;
+      for (const itemId of categoryItems) {
+        const answerValue = answers[itemId];
+        // Count as answered if value exists (even if 0)
+        if (answerValue !== null && answerValue !== undefined && answerValue !== "") {
+          categoryAnsweredCount++;
+        }
+        categoryScore += safeNumber(answerValue);
+      }
+      
+      // Find band for category score
+      let categoryBand = "";
+      let categoryBandDescription = "";
+      const categoryBands = Array.isArray(categoryConfig.bands) ? categoryConfig.bands : [];
+      
+      for (const bandItem of categoryBands) {
+        if (typeof bandItem === "object" && 
+            typeof bandItem.min === "number" && 
+            typeof bandItem.max === "number") {
+          if (categoryScore >= bandItem.min && categoryScore <= bandItem.max) {
+            categoryBand = bandItem.label || "";
+            categoryBandDescription = bandItem.description || "";
+            break;
+          }
+        }
+      }
+      
+      categoryResults[categoryName] = {
+        score: categoryScore,
+        band: categoryBand,
+        bandDescription: categoryBandDescription,
+        items: categoryItems,
+        answeredCount: categoryAnsweredCount,
+        totalItems: categoryItems.length
+      };
+    }
+  }
+
+  // Find band label based on overall score
   let bandLabel = "";
   let bandDescription = "";
   const bands = Array.isArray(rules.bands) ? rules.bands : [];
@@ -90,6 +143,7 @@ function computeScore(scoringRules, answersObj) {
     band: bandLabel,
     bandDescription: bandDescription,
     subscales: subscalesOut,
+    categoryResults: Object.keys(categoryResults).length > 0 ? categoryResults : undefined,
     answeredCount,
     totalItems: items.length
   };

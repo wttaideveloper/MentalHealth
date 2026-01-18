@@ -63,6 +63,13 @@ exports.getById = asyncHandler(async (req, res) => {
   
   const resultData = result.toObject();
   
+  // Convert categoryResults Map to plain object if it exists
+  if (resultData.categoryResults && resultData.categoryResults instanceof Map) {
+    resultData.categoryResults = Object.fromEntries(resultData.categoryResults);
+  } else if (result.categoryResults && result.categoryResults instanceof Map) {
+    resultData.categoryResults = Object.fromEntries(result.categoryResults);
+  }
+  
   return ok(res, "Result retrieved successfully", resultData);
 });
 

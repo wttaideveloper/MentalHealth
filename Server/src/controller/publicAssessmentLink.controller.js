@@ -488,17 +488,26 @@ exports.submit = asyncHandler(async (req, res) => {
     band: scoreResult.band,
     bandDescription: scoreResult.bandDescription,
     subscales: scoreResult.subscales,
+    categoryResults: scoreResult.categoryResults || {},
     interpretation: {
       band: scoreResult.band,
       score: scoreResult.score,
       answeredCount: scoreResult.answeredCount,
       totalItems: scoreResult.totalItems,
-      riskHelpText: riskResult.hasRisk ? riskResult.helpText : null
+      riskHelpText: riskResult.hasRisk ? riskResult.helpText : null,
+      categoryResults: scoreResult.categoryResults || {}
     },
     riskFlags: riskResult.flags
   });
 
   const resultData = resultDoc.toObject();
+  
+  // Convert categoryResults Map to plain object if it exists
+  if (resultData.categoryResults && resultData.categoryResults instanceof Map) {
+    resultData.categoryResults = Object.fromEntries(resultData.categoryResults);
+  } else if (resultDoc.categoryResults && resultDoc.categoryResults instanceof Map) {
+    resultData.categoryResults = Object.fromEntries(resultDoc.categoryResults);
+  }
 
   return ok(res, "Attempt submitted successfully", {
     result: resultData,

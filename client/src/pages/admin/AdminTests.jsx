@@ -61,6 +61,8 @@ function AdminAssessments() {
   const [jsonUploadError, setJsonUploadError] = useState('');
   const [uploadedJsonFileName, setUploadedJsonFileName] = useState('');
   const [isProcessingJson, setIsProcessingJson] = useState(false);
+  const [jsonInputMode, setJsonInputMode] = useState('upload'); // 'upload' or 'paste'
+  const [jsonPasteValue, setJsonPasteValue] = useState('');
   const [validationErrors, setValidationErrors] = useState({ errors: [], warnings: [], questionErrors: {} });
   const [availableCategories, setAvailableCategories] = useState([]);
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
@@ -82,7 +84,8 @@ function AdminAssessments() {
     items: [], // Array of question IDs to include (empty = all)
     weights: {}, // Object: { q1: 2, q2: 1.5 }
     bands: [], // Array: [{ min: 0, max: 10, label: 'Low' }]
-    subscales: {} // Object: { 'Anxiety': ['q1', 'q2'] }
+    subscales: {}, // Object: { 'Anxiety': ['q1', 'q2'] }
+    categories: {} // Object: { 'Depression': { items: ['q1', 'q2'], bands: [{ min, max, label, description }] } }
   });
 
   // Risk Rules UI State
@@ -506,7 +509,8 @@ function AdminAssessments() {
       items: [],
       weights: {},
       bands: [],
-      subscales: {}
+      subscales: {},
+      categories: {}
     });
     setRiskRulesState({ triggers: [] });
     setEligibilityRulesState({ enabled: false, minAge: 18 });
@@ -521,7 +525,7 @@ function AdminAssessments() {
 
   // Transformation functions: UI State → Backend Format
   const transformScoringRulesToBackend = (uiState) => {
-    if (!uiState || uiState.type === 'sum' && !uiState.bands.length && !Object.keys(uiState.subscales).length && uiState.items.length === 0) {
+    if (!uiState || uiState.type === 'sum' && !uiState.bands.length && !Object.keys(uiState.subscales).length && !Object.keys(uiState.categories || {}).length && uiState.items.length === 0) {
       return {};
     }
 
@@ -546,8 +550,24 @@ function AdminAssessments() {
       }));
     }
 
-    if (Object.keys(uiState.subscales).length > 0) {
+    if (Object.keys(uiState.subscales || {}).length > 0) {
       backend.subscales = uiState.subscales;
+    }
+
+    // Transform categories
+    if (uiState.categories && Object.keys(uiState.categories).length > 0) {
+      backend.categories = {};
+      for (const [categoryName, categoryData] of Object.entries(uiState.categories)) {
+        backend.categories[categoryName] = {
+          items: Array.isArray(categoryData.items) ? categoryData.items : [],
+          bands: Array.isArray(categoryData.bands) ? categoryData.bands.map(band => ({
+            min: Number(band.min),
+            max: Number(band.max),
+            label: band.label || '',
+            description: band.description || ''
+          })) : []
+        };
+      }
     }
 
     return backend;
@@ -598,8 +618,25 @@ function AdminAssessments() {
         items: [],
         weights: {},
         bands: [],
-        subscales: {}
+        subscales: {},
+        categories: {}
       };
+    }
+
+    // Transform categories from backend
+    const categories = {};
+    if (backendRules.categories && typeof backendRules.categories === 'object') {
+      for (const [categoryName, categoryData] of Object.entries(backendRules.categories)) {
+        categories[categoryName] = {
+          items: Array.isArray(categoryData.items) ? categoryData.items : [],
+          bands: Array.isArray(categoryData.bands) ? categoryData.bands.map(band => ({
+            min: band.min || 0,
+            max: band.max || 0,
+            label: band.label || '',
+            description: band.description || ''
+          })) : []
+        };
+      }
     }
 
     return {
@@ -612,7 +649,8 @@ function AdminAssessments() {
         label: band.label || '',
         description: band.description || ''
       })) : [],
-      subscales: backendRules.subscales || {}
+      subscales: backendRules.subscales || {},
+      categories: categories
     };
   };
 
@@ -795,6 +833,220 @@ function AdminAssessments() {
       ...currentQuestion,
       options: currentQuestion.options.filter((_, i) => i !== optionIndex)
     });
+  };
+
+  // Helper function to process parsed JSON data (used by both file upload and paste)
+  const processJsonData = (parsedData, sourceFileName = 'imported.json') => {
+    try {
+      if (!parsedData) {
+        throw new Error('JSON data is empty or invalid');
+      }
+      
+      // Handle different JSON formats
+      let jsonData = parsedData;
+      let questionsArray = null;
+      
+      // Case 1: Direct questions array
+      if (Array.isArray(parsedData)) {
+        questionsArray = parsedData;
+      }
+      // Case 2: Has questions property
+      else if (parsedData.questions && Array.isArray(parsedData.questions)) {
+        questionsArray = parsedData.questions;
+        jsonData = parsedData;
+      }
+      // Case 3: Wrapped in schemaJson
+      else if (parsedData.schemaJson && parsedData.schemaJson.questions && Array.isArray(parsedData.schemaJson.questions)) {
+        questionsArray = parsedData.schemaJson.questions;
+        jsonData = parsedData.schemaJson;
+      }
+      // Case 4: Has items property (alternative name)
+      else if (parsedData.items && Array.isArray(parsedData.items)) {
+        questionsArray = parsedData.items;
+        jsonData = parsedData;
+      }
+      // Case 5: Single question object (has id, text, type)
+      else if (typeof parsedData === 'object' && !Array.isArray(parsedData)) {
+        // Check if it's a single question object
+        if (parsedData.id && (parsedData.text || parsedData.question) && parsedData.type) {
+          questionsArray = [parsedData];
+          jsonData = { questions: questionsArray };
+        }
+        // Case 6: Object with question IDs as keys
+        else {
+          const keys = Object.keys(parsedData);
+          if (keys.length > 0) {
+            const firstKey = keys[0];
+            const firstItem = parsedData[firstKey];
+            // Check if it looks like questions object
+            if (firstItem && typeof firstItem === 'object' && (firstItem.id || firstItem.text || firstItem.question || firstItem.type)) {
+              // Convert object to array
+              questionsArray = keys.map(key => {
+                const item = parsedData[key];
+                return {
+                  id: item.id || key,
+                  ...item
+                };
+              });
+              jsonData = { questions: questionsArray };
+            } else {
+              // Case 7: Try to find any array property that might contain questions
+              for (const key of keys) {
+                const value = parsedData[key];
+                if (Array.isArray(value) && value.length > 0) {
+                  const firstArrayItem = value[0];
+                  if (firstArrayItem && typeof firstArrayItem === 'object' && 
+                      (firstArrayItem.id || firstArrayItem.text || firstArrayItem.question || firstArrayItem.type)) {
+                    questionsArray = value;
+                    jsonData = { questions: questionsArray };
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Validate JSON structure
+      if (!questionsArray || !Array.isArray(questionsArray)) {
+        const receivedType = Array.isArray(parsedData) ? 'array' : typeof parsedData;
+        const receivedKeys = typeof parsedData === 'object' && !Array.isArray(parsedData) 
+          ? Object.keys(parsedData).join(', ') 
+          : 'N/A';
+        
+        throw new Error(
+          `JSON must contain a "questions" array. ` +
+          `Received: ${receivedType}${receivedKeys !== 'N/A' ? ` with keys: ${receivedKeys}` : ''}.`
+        );
+      }
+
+      if (questionsArray.length === 0) {
+        throw new Error('Questions array cannot be empty');
+      }
+
+      // Validate each question (same validation logic as before)
+      const validatedQuestions = [];
+      const questionIds = new Set();
+
+      questionsArray.forEach((q, index) => {
+        if (!q.id || typeof q.id !== 'string') {
+          throw new Error(`Question ${index + 1}: "id" is required and must be a string`);
+        }
+        if (!q.text || typeof q.text !== 'string' || q.text.trim() === '') {
+          throw new Error(`Question ${index + 1}: "text" is required and cannot be empty`);
+        }
+        if (questionIds.has(q.id)) {
+          throw new Error(`Question ${index + 1}: Duplicate question ID "${q.id}"`);
+        }
+        questionIds.add(q.id);
+
+        const validTypes = ['radio', 'checkbox', 'text', 'textarea', 'numeric', 'boolean', 'likert'];
+        const questionType = q.type || 'radio';
+        if (!validTypes.includes(questionType)) {
+          throw new Error(`Question ${index + 1}: Invalid type "${questionType}". Valid types: ${validTypes.join(', ')}`);
+        }
+
+        if (['radio', 'checkbox', 'likert'].includes(questionType)) {
+          const hasSubQuestions = (q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) ||
+                                 (q.children && Array.isArray(q.children) && q.children.length > 0);
+          
+          if (!hasSubQuestions) {
+            if (!q.options || !Array.isArray(q.options) || q.options.length < 2) {
+              throw new Error(`Question ${index + 1}: Must have at least 2 options for type "${questionType}"`);
+            }
+          }
+
+          q.options && q.options.forEach((opt, optIndex) => {
+            if (opt.value === undefined || opt.value === null) {
+              throw new Error(`Question ${index + 1}, Option ${optIndex + 1}: "value" is required`);
+            }
+            if (!opt.label || typeof opt.label !== 'string' || opt.label.trim() === '') {
+              throw new Error(`Question ${index + 1}, Option ${optIndex + 1}: "label" is required`);
+            }
+          });
+        }
+
+        const validatedQuestion = {
+          id: q.id.trim(),
+          text: q.text.trim(),
+          type: questionType,
+          required: q.required !== undefined ? q.required : true,
+          order: q.order !== undefined ? Number(q.order) : index + 1,
+          isCritical: q.isCritical || false,
+          helpText: q.helpText || '',
+          options: q.options ? q.options.map(opt => ({
+            value: typeof opt.value === 'number' ? opt.value : Number(opt.value) || opt.value,
+            label: String(opt.label).trim()
+          })) : [],
+          subQuestions: q.subQuestions || q.children || [],
+          show_if: q.show_if || q.showIf || undefined,
+          min: q.min !== undefined ? Number(q.min) : undefined,
+          max: q.max !== undefined ? Number(q.max) : undefined,
+          step: q.step !== undefined ? Number(q.step) : undefined,
+          maxLength: q.maxLength !== undefined ? Number(q.maxLength) : undefined,
+          rows: q.rows !== undefined ? Number(q.rows) : undefined
+        };
+        
+        Object.keys(validatedQuestion).forEach(key => {
+          if (validatedQuestion[key] === undefined) {
+            delete validatedQuestion[key];
+          }
+        });
+
+        validatedQuestions.push(validatedQuestion);
+      });
+
+      // Merge with existing questions
+      const existingQuestions = createForm.schemaJson.questions || [];
+      const existingIds = new Set(existingQuestions.map(q => q.id));
+      const newQuestions = validatedQuestions.filter(q => !existingIds.has(q.id));
+      const duplicateCount = validatedQuestions.length - newQuestions.length;
+
+      if (duplicateCount > 0) {
+        showToast.warning(`${duplicateCount} question(s) were skipped due to duplicate IDs`);
+      }
+
+      const mergedQuestions = [...existingQuestions, ...newQuestions]
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      // Extract scoringRules from original parsedData if present
+      let extractedScoringRules = null;
+      if (typeof parsedData === 'object' && parsedData !== null && !Array.isArray(parsedData)) {
+        if (parsedData.scoringRules && typeof parsedData.scoringRules === 'object') {
+          extractedScoringRules = parsedData.scoringRules;
+        }
+      }
+
+      // Update form state
+      setCreateForm({
+        ...createForm,
+        schemaJson: {
+          ...createForm.schemaJson,
+          questions: mergedQuestions
+        }
+      });
+
+      // If scoringRules were found, transform and set them
+      if (extractedScoringRules) {
+        const transformedRules = transformScoringRulesFromBackend(extractedScoringRules);
+        setScoringRulesState(transformedRules);
+        showToast.success(`Successfully imported ${newQuestions.length} question(s) and scoring rules (including categories)! ${duplicateCount > 0 ? `(${duplicateCount} duplicates skipped)` : ''}`);
+      } else {
+        showToast.success(`Successfully imported ${newQuestions.length} question(s)! ${duplicateCount > 0 ? `(${duplicateCount} duplicates skipped)` : ''}`);
+      }
+
+      setUploadedJsonFileName(sourceFileName);
+      setJsonUploadError('');
+      setIsProcessingJson(false);
+      
+    } catch (error) {
+      console.error('JSON processing error:', error);
+      setJsonUploadError(error.message);
+      setUploadedJsonFileName('');
+      setIsProcessingJson(false);
+      throw error;
+    }
   };
 
   const handleJsonUpload = (e) => {
@@ -1036,6 +1288,14 @@ function AdminAssessments() {
         const mergedQuestions = [...existingQuestions, ...newQuestions]
           .sort((a, b) => (a.order || 0) - (b.order || 0));
 
+        // Extract scoringRules from original parsedData if present (before any transformations)
+        let extractedScoringRules = null;
+        if (typeof parsedData === 'object' && parsedData !== null && !Array.isArray(parsedData)) {
+          if (parsedData.scoringRules && typeof parsedData.scoringRules === 'object') {
+            extractedScoringRules = parsedData.scoringRules;
+          }
+        }
+
         // Update form state
         setCreateForm({
           ...createForm,
@@ -1045,8 +1305,15 @@ function AdminAssessments() {
           }
         });
 
-        setJsonUploadError('');
-        showToast.success(`Successfully imported ${newQuestions.length} question(s)! ${duplicateCount > 0 ? `(${duplicateCount} duplicates skipped)` : ''}`);
+        // If scoringRules were found, transform and set them
+        if (extractedScoringRules) {
+          const transformedRules = transformScoringRulesFromBackend(extractedScoringRules);
+          setScoringRulesState(transformedRules);
+          showToast.success(`Successfully imported ${newQuestions.length} question(s) and scoring rules (including categories)! ${duplicateCount > 0 ? `(${duplicateCount} duplicates skipped)` : ''}`);
+        } else {
+          setJsonUploadError('');
+          showToast.success(`Successfully imported ${newQuestions.length} question(s)! ${duplicateCount > 0 ? `(${duplicateCount} duplicates skipped)` : ''}`);
+        }
 
       } catch (error) {
         console.error('JSON parsing error:', error);
@@ -1714,7 +1981,34 @@ function AdminAssessments() {
                       </div>
 
                       <div className="space-y-4">
+                        {/* Tabs for Upload/Paste */}
+                        <div className="flex gap-2 border-b border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => setJsonInputMode('upload')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                              jsonInputMode === 'upload'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            Upload File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setJsonInputMode('paste')}
+                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                              jsonInputMode === 'paste'
+                                ? 'border-blue-600 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                          >
+                            Paste JSON
+                          </button>
+                        </div>
+
                         {!uploadedJsonFileName ? (
+                          jsonInputMode === 'upload' ? (
                           <label className="cursor-pointer block">
                             <input
                               type="file"
@@ -1744,6 +2038,43 @@ function AdminAssessments() {
                               </div>
                             </div>
                           </label>
+                          ) : (
+                          /* Paste JSON Textarea */
+                          <div className="space-y-3">
+                            <textarea
+                              value={jsonPasteValue}
+                              onChange={(e) => setJsonPasteValue(e.target.value)}
+                              placeholder={`Paste your JSON here. Example:\n{\n  "schemaJson": { "questions": [...] },\n  "scoringRules": { "categories": {...} }\n}`}
+                              rows="12"
+                              className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!jsonPasteValue.trim()) {
+                                  showToast.error('Please paste JSON content');
+                                  return;
+                                }
+                                setIsProcessingJson(true);
+                                setJsonUploadError('');
+                                try {
+                                  const parsedData = JSON.parse(jsonPasteValue);
+                                  processJsonData(parsedData, 'pasted-json.json');
+                                  setJsonPasteValue(''); // Clear after successful import
+                                } catch (error) {
+                                  const errorMsg = error.message || 'Invalid JSON format';
+                                  setJsonUploadError(errorMsg);
+                                  showToast.error(`JSON Parse Error: ${errorMsg}`);
+                                  setIsProcessingJson(false);
+                                }
+                              }}
+                              disabled={isProcessingJson || !jsonPasteValue.trim()}
+                              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                            >
+                              {isProcessingJson ? 'Processing...' : 'Import JSON'}
+                            </button>
+                          </div>
+                          )
                         ) : (
                           <div className="bg-white border border-green-200 rounded-lg p-4">
                             <div className="flex items-center justify-between">
@@ -2386,6 +2717,247 @@ function AdminAssessments() {
                           )}
                         </div>
                         <p className="text-xs text-gray-500 mt-2">Score bands help interpret results. Add descriptions to provide detailed feedback to users based on their scores.</p>
+                      </div>
+
+                      {/* Category Results Section */}
+                      <div className="mt-6 pt-6 border-t border-gray-200">
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="block text-sm font-medium text-gray-800">
+                            Category Results (for multi-category assessments like DASS-21)
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const categoryName = prompt('Enter category name (e.g., Depression, Anxiety, Stress):');
+                              if (categoryName && categoryName.trim()) {
+                                setScoringRulesState({
+                                  ...scoringRulesState,
+                                  categories: {
+                                    ...scoringRulesState.categories,
+                                    [categoryName.trim()]: {
+                                      items: [],
+                                      bands: []
+                                    }
+                                  }
+                                });
+                              }
+                            }}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Category
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-4">Configure categories (e.g., Depression, Anxiety, Stress) with their questions and severity bands. Each category will show separate results with bands.</p>
+                        
+                        <div className="space-y-4">
+                          {Object.entries(scoringRulesState.categories || {}).map(([categoryName, categoryData]) => (
+                            <div key={categoryName} className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-base font-semibold text-gray-900">{categoryName}</h4>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newCategories = { ...scoringRulesState.categories };
+                                    delete newCategories[categoryName];
+                                    setScoringRulesState({ ...scoringRulesState, categories: newCategories });
+                                  }}
+                                  className="text-red-400 hover:text-red-600 transition-colors p-1"
+                                >
+                                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+
+                              {/* Category Questions */}
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-2">Questions for {categoryName}</label>
+                                <div className="flex flex-wrap gap-2">
+                                  {createForm.schemaJson.questions && createForm.schemaJson.questions.length > 0 ? (
+                                    createForm.schemaJson.questions.map((q) => {
+                                      const isSelected = (categoryData.items || []).includes(q.id);
+                                      return (
+                                        <button
+                                          key={q.id}
+                                          type="button"
+                                          onClick={() => {
+                                            const currentItems = categoryData.items || [];
+                                            const newItems = isSelected
+                                              ? currentItems.filter(id => id !== q.id)
+                                              : [...currentItems, q.id];
+                                            setScoringRulesState({
+                                              ...scoringRulesState,
+                                              categories: {
+                                                ...scoringRulesState.categories,
+                                                [categoryName]: {
+                                                  ...categoryData,
+                                                  items: newItems
+                                                }
+                                              }
+                                            });
+                                          }}
+                                          className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                                            isSelected
+                                              ? 'bg-blue-600 text-white border-blue-600'
+                                              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                                          }`}
+                                        >
+                                          {q.id}
+                                        </button>
+                                      );
+                                    })
+                                  ) : (
+                                    <p className="text-xs text-gray-500">Add questions first in the Questions section</p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Category Bands */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <label className="block text-xs font-medium text-gray-700">Severity Bands for {categoryName}</label>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentBands = categoryData.bands || [];
+                                      setScoringRulesState({
+                                        ...scoringRulesState,
+                                        categories: {
+                                          ...scoringRulesState.categories,
+                                          [categoryName]: {
+                                            ...categoryData,
+                                            bands: [...currentBands, { min: 0, max: 10, label: '', description: '' }]
+                                          }
+                                        }
+                                      });
+                                    }}
+                                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                  >
+                                    + Add Band
+                                  </button>
+                                </div>
+                                <div className="space-y-2">
+                                  {(categoryData.bands || []).map((band, bandIndex) => (
+                                    <div key={bandIndex} className="p-3 bg-white border border-gray-200 rounded space-y-2">
+                                      <div className="grid grid-cols-3 gap-2">
+                                        <input
+                                          type="number"
+                                          value={band.min || 0}
+                                          onChange={(e) => {
+                                            const newBands = [...(categoryData.bands || [])];
+                                            newBands[bandIndex].min = Number(e.target.value) || 0;
+                                            setScoringRulesState({
+                                              ...scoringRulesState,
+                                              categories: {
+                                                ...scoringRulesState.categories,
+                                                [categoryName]: {
+                                                  ...categoryData,
+                                                  bands: newBands
+                                                }
+                                              }
+                                            });
+                                          }}
+                                          placeholder="Min"
+                                          className="px-2 py-1 text-xs bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                        />
+                                        <input
+                                          type="number"
+                                          value={band.max || 0}
+                                          onChange={(e) => {
+                                            const newBands = [...(categoryData.bands || [])];
+                                            newBands[bandIndex].max = Number(e.target.value) || 0;
+                                            setScoringRulesState({
+                                              ...scoringRulesState,
+                                              categories: {
+                                                ...scoringRulesState.categories,
+                                                [categoryName]: {
+                                                  ...categoryData,
+                                                  bands: newBands
+                                                }
+                                              }
+                                            });
+                                          }}
+                                          placeholder="Max"
+                                          className="px-2 py-1 text-xs bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                        />
+                                        <input
+                                          type="text"
+                                          value={band.label || ''}
+                                          onChange={(e) => {
+                                            const newBands = [...(categoryData.bands || [])];
+                                            newBands[bandIndex].label = e.target.value;
+                                            setScoringRulesState({
+                                              ...scoringRulesState,
+                                              categories: {
+                                                ...scoringRulesState.categories,
+                                                [categoryName]: {
+                                                  ...categoryData,
+                                                  bands: newBands
+                                                }
+                                              }
+                                            });
+                                          }}
+                                          placeholder="Label (e.g., Normal)"
+                                          className="px-2 py-1 text-xs bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                        />
+                                      </div>
+                                      <textarea
+                                        value={band.description || ''}
+                                        onChange={(e) => {
+                                          const newBands = [...(categoryData.bands || [])];
+                                          newBands[bandIndex].description = e.target.value;
+                                          setScoringRulesState({
+                                            ...scoringRulesState,
+                                            categories: {
+                                              ...scoringRulesState.categories,
+                                              [categoryName]: {
+                                                ...categoryData,
+                                                bands: newBands
+                                              }
+                                            }
+                                          });
+                                        }}
+                                        placeholder="Description (optional)"
+                                        rows="2"
+                                        className="w-full px-2 py-1 text-xs bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                                      />
+                                      <div className="flex justify-end">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const newBands = (categoryData.bands || []).filter((_, i) => i !== bandIndex);
+                                            setScoringRulesState({
+                                              ...scoringRulesState,
+                                              categories: {
+                                                ...scoringRulesState.categories,
+                                                [categoryName]: {
+                                                  ...categoryData,
+                                                  bands: newBands
+                                                }
+                                              }
+                                            });
+                                          }}
+                                          className="text-red-400 hover:text-red-600 text-xs"
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  {(!categoryData.bands || categoryData.bands.length === 0) && (
+                                    <p className="text-xs text-gray-500 text-center py-2">No bands configured for this category. Click "Add Band" to create one.</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {(!scoringRulesState.categories || Object.keys(scoringRulesState.categories).length === 0) && (
+                            <p className="text-sm text-gray-500 text-center py-4">No categories configured. Click "Add Category" to create category-based results (e.g., for DASS-21 with Depression, Anxiety, Stress).</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}

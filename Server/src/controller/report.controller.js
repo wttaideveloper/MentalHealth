@@ -44,6 +44,16 @@ exports.downloadReport = asyncHandler(async (req, res) => {
   const fileName = `report-${resultId}-${timestamp}.pdf`;
   
   try {
+    // Convert categoryResults Map to plain object if needed
+    let categoryResults = null;
+    if (result.categoryResults) {
+      if (result.categoryResults instanceof Map) {
+        categoryResults = Object.fromEntries(result.categoryResults);
+      } else if (typeof result.categoryResults === 'object') {
+        categoryResults = result.categoryResults;
+      }
+    }
+    
     // Generate PDF file
     const filePath = await generateResultPdf({
       fileName,
@@ -51,7 +61,8 @@ exports.downloadReport = asyncHandler(async (req, res) => {
       testTitle: result.testId.title,
       score: result.score,
       band: result.band || "",
-      interpretationText
+      interpretationText,
+      categoryResults
     });
     
     // Set headers for PDF download

@@ -11,6 +11,7 @@ const resultSchema = new mongoose.Schema(
     band: { type: String, default: "" },
     bandDescription: { type: String, default: "" },
     subscales: { type: Object, default: {} },
+    categoryResults: { type: Map, of: Object, default: {} }, // Category results with bands
 
     interpretation: { type: Object, default: {} },
     riskFlags: { type: Object, default: {} }
