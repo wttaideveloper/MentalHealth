@@ -1448,17 +1448,30 @@ function AdminResults() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  {selectedGroupAssessment && (
-                    <button
-                      onClick={() => handleDownloadGroupPDF(selectedGroupAssessment._id)}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Download PDF
-                    </button>
-                  )}
+                  {selectedGroupAssessment && (() => {
+                    const totalPerspectives = selectedGroupAssessment.perspectives?.length || 0;
+                    const completedPerspectives = selectedGroupAssessment.perspectives?.filter(p => p.resultId).length || 0;
+                    const isFullyCompleted = completedPerspectives === totalPerspectives && totalPerspectives > 0;
+                    
+                    return isFullyCompleted ? (
+                      <button
+                        onClick={() => handleDownloadGroupPDF(selectedGroupAssessment._id)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Download PDF
+                      </button>
+                    ) : (
+                      <span className="px-4 py-2 bg-gray-200 text-gray-600 rounded-lg flex items-center gap-2 text-sm cursor-not-allowed" title="PDF download available when all perspectives are completed">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        PDF ({completedPerspectives}/{totalPerspectives})
+                      </span>
+                    );
+                  })()}
                   <button
                     onClick={() => {
                       setShowGroupReportModal(false);
@@ -1476,13 +1489,35 @@ function AdminResults() {
 
               {groupReportData.groupAssessment && (
                 <div className="mb-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{groupReportData.groupAssessment.groupName}</h3>
-                  <p className="text-sm text-gray-600">{groupReportData.groupAssessment.testId?.title}</p>
-                  {groupReportData.groupAssessment.completedAt && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Completed: {new Date(groupReportData.groupAssessment.completedAt).toLocaleDateString()}
-                    </p>
-                  )}
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{groupReportData.groupAssessment.groupName}</h3>
+                      <p className="text-sm text-gray-600">{groupReportData.groupAssessment.testId?.title}</p>
+                      {groupReportData.groupAssessment.completedAt && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Completed: {new Date(groupReportData.groupAssessment.completedAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {(() => {
+                        const totalPerspectives = groupReportData.groupAssessment.perspectives?.length || 0;
+                        const completedPerspectives = groupReportData.groupAssessment.perspectives?.filter(p => p.resultId).length || 0;
+                        const isFullyCompleted = completedPerspectives === totalPerspectives && totalPerspectives > 0;
+                        return (
+                          <div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              isFullyCompleted 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {isFullyCompleted ? '✓ Complete' : `${completedPerspectives}/${totalPerspectives} Completed`}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1498,23 +1533,39 @@ function AdminResults() {
                 return hasResults ? (
                 <div className="space-y-6">
                   {/* Participant Information */}
-                  {users && Object.keys(users).length > 0 && (
+                  {groupReportData.groupAssessment?.perspectives && (
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h4 className="text-md font-semibold text-gray-900 mb-3">Participants</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {Object.entries(users).map(([perspective, user]) => (
-                          <div key={perspective} className="bg-white rounded-lg p-3 border border-gray-200">
-                            <div className="text-xs font-medium text-gray-500 mb-1">{perspective}</div>
-                            {user ? (
-                              <div className="text-sm text-gray-900">
-                                {user.firstName} {user.lastName}
-                                {user.email && <div className="text-xs text-gray-500 mt-1">{user.email}</div>}
+                        {groupReportData.groupAssessment.perspectives.map((perspective) => {
+                          const user = users[perspective.perspectiveName];
+                          const hasResult = !!results[perspective.perspectiveName];
+                          return (
+                            <div 
+                              key={perspective.perspectiveName} 
+                              className={`bg-white rounded-lg p-3 border-2 ${
+                                hasResult ? 'border-green-300' : 'border-gray-200'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="text-xs font-medium text-gray-500">{perspective.perspectiveName}</div>
+                                {hasResult ? (
+                                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">✓</span>
+                                ) : (
+                                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">○</span>
+                                )}
                               </div>
-                            ) : (
-                              <div className="text-sm text-gray-500 italic">Anonymous</div>
-                            )}
-                          </div>
-                        ))}
+                              {user ? (
+                                <div className="text-sm text-gray-900">
+                                  {user.firstName} {user.lastName}
+                                  {user.email && <div className="text-xs text-gray-500 mt-1">{user.email}</div>}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-gray-500 italic">Anonymous</div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -1523,18 +1574,40 @@ function AdminResults() {
                   <div className="bg-gray-50 rounded-lg p-4">
                     <h4 className="text-md font-semibold text-gray-900 mb-4">Overall Scores</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Object.entries(results).map(([perspective, result]) => (
-                        <div key={perspective} className="bg-white rounded-lg p-4 border border-gray-200">
-                          <div className="text-sm font-medium text-gray-600 mb-2">{perspective}</div>
-                          <div className="text-2xl font-bold text-mh-dark">{result.score || 0}</div>
-                          <div className={`text-xs mt-1 px-2 py-1 rounded inline-block ${getBandColorClass(result.band)}`}>
-                            {result.band || 'N/A'}
+                      {groupReportData.groupAssessment?.perspectives?.map((perspective) => {
+                        const result = results[perspective.perspectiveName];
+                        const hasResult = !!result;
+                        return (
+                          <div 
+                            key={perspective.perspectiveName} 
+                            className={`bg-white rounded-lg p-4 border-2 ${
+                              hasResult ? 'border-green-300' : 'border-gray-200 opacity-60'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="text-sm font-medium text-gray-600">{perspective.perspectiveName}</div>
+                              {hasResult ? (
+                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">✓ Complete</span>
+                              ) : (
+                                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">○ Pending</span>
+                              )}
+                            </div>
+                            {hasResult ? (
+                              <>
+                                <div className="text-2xl font-bold text-mh-dark">{result.score || 0}</div>
+                                <div className={`text-xs mt-1 px-2 py-1 rounded inline-block ${getBandColorClass(result.band)}`}>
+                                  {result.band || 'N/A'}
+                                </div>
+                                {result.bandDescription && (
+                                  <div className="text-xs text-gray-500 mt-2">{result.bandDescription}</div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="text-sm text-gray-400 italic py-4">No result yet</div>
+                            )}
                           </div>
-                          {result.bandDescription && (
-                            <div className="text-xs text-gray-500 mt-2">{result.bandDescription}</div>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
