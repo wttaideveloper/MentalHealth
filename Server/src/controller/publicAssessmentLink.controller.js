@@ -388,6 +388,12 @@ exports.start = asyncHandler(async (req, res) => {
         existingAttempt.participantInfo = participantInfo;
         await existingAttempt.save();
       }
+      // Update participantInfo with perspective if not set
+      if (isGroupLink && perspective && existingAttempt.participantInfo && !existingAttempt.participantInfo.perspective) {
+        existingAttempt.participantInfo.perspective = perspective.toLowerCase();
+        await existingAttempt.save();
+      }
+      
       // Return existing attempt
       return ok(res, "Existing attempt found", {
         attempt: existingAttempt.toObject(),
@@ -418,21 +424,61 @@ exports.start = asyncHandler(async (req, res) => {
   const attemptPerspective = (isGroupLink && normalizedPerspective) ? normalizedPerspective : "individual";
   console.log(`[START] Creating attempt with perspective: ${attemptPerspective}, isGroupLink: ${isGroupLink}, perspective param: ${perspective}, normalized: ${normalizedPerspective}`); // Debug log
   
-  const newAttempt = await TestAttempt.create({
+  // Store perspective in participantInfo as backup in case it's not saved in the attempt
+  const participantInfoWithPerspective = participantInfo ? {
+    ...participantInfo,
+    perspective: normalizedPerspective // Store perspective in participantInfo as backup
+  } : null;
+  
+  const attemptData = {
     userId: null, // Anonymous attempt
     testId: linkDoc.testId,
     linkToken: token,
     groupAssessmentId: groupAssessmentId || null,
-    perspective: attemptPerspective,
+    perspective: attemptPerspective, // This should be saved
     status: "in_progress",
     answers: {},
-    participantInfo: participantInfo || null, // Store participant info
+    participantInfo: participantInfoWithPerspective, // Include perspective as backup
     startedAt: new Date(),
     timeLimitSeconds: testDoc.timeLimitSeconds || 0,
     expiresAt
-  });
+  };
   
-  console.log(`[START] Created attempt ${newAttempt._id} with perspective: ${newAttempt.perspective}`); // Debug log
+  console.log(`[START] Attempt data before create:`, { 
+    perspective: attemptData.perspective,
+    hasParticipantInfo: !!attemptData.participantInfo,
+    participantInfoPerspective: attemptData.participantInfo?.perspective
+  }); // Debug log
+  
+  let newAttempt;
+  try {
+    newAttempt = await TestAttempt.create(attemptData);
+    
+    // Reload to ensure we get the actual saved values
+    const savedAttempt = await TestAttempt.findById(newAttempt._id);
+    console.log(`[START] Created attempt ${newAttempt._id} with perspective: ${savedAttempt.perspective}`); // Debug log
+    
+    if (!savedAttempt.perspective || savedAttempt.perspective === 'undefined' || savedAttempt.perspective === undefined) {
+      console.log(`[START] ERROR: Perspective was not saved! Attempting to update...`); // Debug log
+      // Try to update using updateOne to force the update
+      const updateResult = await TestAttempt.updateOne(
+        { _id: newAttempt._id },
+        { $set: { perspective: attemptPerspective } }
+      );
+      console.log(`[START] Update result:`, updateResult); // Debug log
+      // Reload again to verify
+      newAttempt = await TestAttempt.findById(newAttempt._id);
+      console.log(`[START] After update, perspective: ${newAttempt.perspective}`); // Debug log
+      
+      // If still not saved, there's a schema issue - log it
+      if (!newAttempt.perspective || newAttempt.perspective === 'undefined') {
+        console.error(`[START] CRITICAL: Perspective still not saved after update! Schema may have an issue.`); // Debug log
+      }
+    }
+  } catch (error) {
+    console.error(`[START] Error creating attempt:`, error.message); // Debug log
+    throw error;
+  }
 
   // Increment current attempts counter
   if (isGroupLink && perspective) {
@@ -578,11 +624,15 @@ exports.submit = asyncHandler(async (req, res) => {
   // Check if this is a group assessment link attempt
   let groupAssessmentId = null;
   // Get perspective from attempt, normalize to handle any casing issues
-  let perspective = attempt.perspective ? attempt.perspective.toLowerCase() : null;
+  // Handle both actual undefined and string "undefined"
+  let perspective = null;
+  if (attempt.perspective && attempt.perspective !== 'undefined' && attempt.perspective !== undefined) {
+    perspective = attempt.perspective.toLowerCase();
+  }
   let groupLink = null;
   
   console.log(`[SUBMIT] Attempt ID: ${attempt._id}, Token: ${token}`); // Debug log
-  console.log(`[SUBMIT] Attempt perspective from DB: "${attempt.perspective}", normalized: "${perspective}"`); // Debug log
+  console.log(`[SUBMIT] Attempt perspective from DB: "${attempt.perspective}", type: ${typeof attempt.perspective}, normalized: "${perspective}"`); // Debug log
   console.log(`[SUBMIT] Attempt groupAssessmentId: ${attempt.groupAssessmentId}`); // Debug log
   console.log(`[SUBMIT] Attempt participantInfo:`, attempt.participantInfo); // Debug log
   
@@ -600,15 +650,45 @@ exports.submit = asyncHandler(async (req, res) => {
       perspectives: groupLink.perspectives?.map(p => p.perspectiveName)
     } : 'NONE'); // Debug log
     
-    // If perspective is null but we have a group link, try to infer from participantInfo or use first perspective
+    // If perspective is null but we have a group link, try to recover it
     if (groupLink && !perspective) {
       console.log(`[SUBMIT] WARNING: Perspective is null but group link exists! Attempting to recover...`); // Debug log
-      // Try to get perspective from participantInfo if available
+      
+      // Method 1: Try to get from participantInfo.perspective (if we stored it)
       if (attempt.participantInfo && attempt.participantInfo.perspective) {
         perspective = attempt.participantInfo.perspective.toLowerCase();
-        console.log(`[SUBMIT] Recovered perspective from participantInfo: ${perspective}`); // Debug log
-      } else if (groupLink.perspectives && groupLink.perspectives.length > 0) {
-        // Fallback: use first perspective (not ideal but better than failing)
+        console.log(`[SUBMIT] Recovered perspective from participantInfo.perspective: ${perspective}`); // Debug log
+      } 
+      // Method 2: Try to infer from participantInfo - if studentName exists and matches name, it's student; otherwise check if studentName is different
+      else if (attempt.participantInfo) {
+        const hasStudentName = !!attempt.participantInfo.studentName;
+        const nameMatchesStudentName = attempt.participantInfo.name && 
+                                       attempt.participantInfo.studentName && 
+                                       attempt.participantInfo.name.toLowerCase() === attempt.participantInfo.studentName.toLowerCase();
+        
+        if (nameMatchesStudentName || (!hasStudentName && attempt.participantInfo.name)) {
+          // If name matches studentName or no studentName provided, likely a student
+          perspective = 'student';
+          console.log(`[SUBMIT] Inferred perspective as 'student' from participantInfo`); // Debug log
+        } else if (hasStudentName && attempt.participantInfo.name !== attempt.participantInfo.studentName) {
+          // If studentName is different from name, likely parent/teacher
+          // Check which perspective in the link has results - if student has result, this is parent/teacher
+          // Otherwise, we need to check the link perspectives
+          const availablePerspectives = groupLink.perspectives.map(p => p.perspectiveName.toLowerCase());
+          // Prefer parent over teacher if both exist
+          if (availablePerspectives.includes('parent')) {
+            perspective = 'parent';
+          } else if (availablePerspectives.includes('teacher')) {
+            perspective = 'teacher';
+          } else {
+            perspective = availablePerspectives[0] || 'student';
+          }
+          console.log(`[SUBMIT] Inferred perspective as '${perspective}' from participantInfo (name != studentName)`); // Debug log
+        }
+      }
+      
+      // Method 3: Last resort - use first available perspective
+      if (!perspective && groupLink.perspectives && groupLink.perspectives.length > 0) {
         perspective = groupLink.perspectives[0].perspectiveName.toLowerCase();
         console.log(`[SUBMIT] WARNING: Using first perspective as fallback: ${perspective}`); // Debug log
       }
@@ -617,19 +697,31 @@ exports.submit = asyncHandler(async (req, res) => {
     if (groupLink && perspective) {
       // Extract student name from participantInfo
       // For Student role: use their own name
-      // For Parent/Teacher role: use studentName field from participantInfo
+      // For Parent/Teacher role: MUST use studentName field (never use their own name)
       let studentName = null;
       if (attempt.participantInfo) {
-        if (perspective.toLowerCase() === 'student') {
+        if (perspective && perspective.toLowerCase() === 'student') {
+          // Student uses their own name
           studentName = attempt.participantInfo.name || attempt.participantInfo.studentName;
+          console.log(`[SUBMIT] Student perspective - using name: ${studentName}`); // Debug log
         } else {
-          // For Parent/Teacher, use studentName field
-          studentName = attempt.participantInfo.studentName || attempt.participantInfo.name;
+          // For Parent/Teacher, MUST use studentName field - this is the student they're reporting for
+          // Never fall back to their own name, as that would create separate groups
+          studentName = attempt.participantInfo.studentName;
+          if (!studentName) {
+            console.log(`[SUBMIT] ERROR: studentName is required for ${perspective} perspective!`); // Debug log
+            console.log(`[SUBMIT] ParticipantInfo:`, attempt.participantInfo); // Debug log
+            return res.status(400).json({ 
+              success: false, 
+              message: `Student name is required for ${perspective} perspective. Please provide the student's name.` 
+            });
+          }
+          console.log(`[SUBMIT] ${perspective} perspective - using studentName: ${studentName}`); // Debug log
         }
       }
 
       console.log(`[SUBMIT] ParticipantInfo:`, attempt.participantInfo); // Debug log
-      console.log(`[SUBMIT] Extracted studentName: ${studentName}`); // Debug log
+      console.log(`[SUBMIT] Perspective: ${perspective}, Extracted studentName: ${studentName}`); // Debug log
       
       if (!studentName) {
         console.log(`[SUBMIT] ERROR: Student name is missing!`); // Debug log
@@ -750,9 +842,13 @@ exports.submit = asyncHandler(async (req, res) => {
     const groupAssessment = await GroupAssessment.findById(groupAssessmentId);
     if (groupAssessment) {
       // Find and update the perspective in the array
+      // Normalize perspective name for comparison (handle case differences)
+      const normalizedPerspectiveName = perspective ? perspective.charAt(0).toUpperCase() + perspective.slice(1).toLowerCase() : null;
       const perspectiveIndex = groupAssessment.perspectives.findIndex(p => 
-        p.perspectiveName === perspective
+        p.perspectiveName.toLowerCase() === (perspective ? perspective.toLowerCase() : '')
       );
+      
+      console.log(`[SUBMIT] Updating group assessment ${groupAssessment._id}, perspective: ${perspective}, perspectiveIndex: ${perspectiveIndex}`); // Debug log
       
       if (perspectiveIndex !== -1) {
         groupAssessment.perspectives[perspectiveIndex].resultId = resultDoc._id;
@@ -760,9 +856,14 @@ exports.submit = asyncHandler(async (req, res) => {
           groupAssessment.perspectives[perspectiveIndex].participantInfo = attempt.participantInfo;
         }
         
+        // Mark the array as modified for Mongoose
+        groupAssessment.markModified('perspectives');
+        
         // Check if all perspectives have results
         const completedCount = groupAssessment.perspectives.filter(p => p.resultId).length;
         const totalCount = groupAssessment.perspectives.length;
+        
+        console.log(`[SUBMIT] Group assessment ${groupAssessment._id}: ${completedCount}/${totalCount} perspectives completed`); // Debug log
         
         if (completedCount === totalCount && totalCount > 0) {
           groupAssessment.status = "completed";
@@ -772,6 +873,10 @@ exports.submit = asyncHandler(async (req, res) => {
         }
         
         await groupAssessment.save();
+        console.log(`[SUBMIT] Saved group assessment ${groupAssessment._id} with resultId for perspective ${perspective}`); // Debug log
+      } else {
+        console.error(`[SUBMIT] ERROR: Perspective "${perspective}" not found in group assessment perspectives!`); // Debug log
+        console.error(`[SUBMIT] Available perspectives:`, groupAssessment.perspectives.map(p => p.perspectiveName)); // Debug log
       }
     }
 

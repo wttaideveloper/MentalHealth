@@ -606,6 +606,7 @@ function AdminResults() {
                       const completedCount = group.perspectives?.filter(p => hasResult(p)).length || 0;
                       const totalCount = group.perspectives?.length || 0;
                       const isCompleted = completedCount === totalCount && totalCount > 0;
+                      const hasAnyResults = completedCount > 0; // At least one perspective has a result
                       const isLinkBased = !!group.groupAssessmentLinkId; // New flow: created via link
                       const isOldFlow = !group.groupAssessmentLinkId; // Old flow: manually created
                       
@@ -670,7 +671,7 @@ function AdminResults() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex justify-end gap-2">
-                              {isCompleted ? (
+                              {hasAnyResults ? (
                                 <>
                                   <button
                                     onClick={() => handleViewGroupReport(group._id)}
@@ -678,12 +679,17 @@ function AdminResults() {
                                   >
                                     View Details
                                   </button>
-                                  <button
-                                    onClick={() => handleDownloadGroupPDF(group._id)}
-                                    className="text-green-600 hover:text-green-800"
-                                  >
-                                    Download PDF
-                                  </button>
+                                  {isCompleted && (
+                                    <button
+                                      onClick={() => handleDownloadGroupPDF(group._id)}
+                                      className="text-green-600 hover:text-green-800"
+                                    >
+                                      Download PDF
+                                    </button>
+                                  )}
+                                  {!isCompleted && (
+                                    <span className="text-xs text-gray-500">({completedCount}/{totalCount} completed)</span>
+                                  )}
                                 </>
                               ) : (
                                 <>
