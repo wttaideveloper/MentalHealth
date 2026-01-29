@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAssessmentLinks, createAssessmentLink, getAdminTests, getLinkResults, sendAssessmentLinkEmail, getLinkEmailHistory } from '../../api/adminApi';
+import { getAssessmentLinks, createAssessmentLink, getAdminTests, getLinkResults, sendAssessmentLinkEmail, getLinkEmailHistory, createGroupAssessmentLink, getGroupAssessmentLinks } from '../../api/adminApi';
 import { showToast } from '../../utils/toast';
 import DatePicker from '../../components/DatePicker';
 
@@ -10,8 +10,17 @@ function AdminAssessmentLinks() {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [creatingGroup, setCreatingGroup] = useState(false);
   const [tests, setTests] = useState([]);
+  const [groupFormData, setGroupFormData] = useState({
+    testId: '',
+    groupName: '',
+    perspectives: [{ perspectiveName: '', maxAttempts: '' }],
+    expiresAt: '',
+    notes: ''
+  });
   const [formData, setFormData] = useState({
     testId: '',
     campaignName: '',
@@ -141,6 +150,90 @@ function AdminAssessmentLinks() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const handleCreateGroupLink = async (e) => {
+    e.preventDefault();
+    
+    if (!groupFormData.testId) {
+      showToast.error('Please select a test');
+      return;
+    }
+
+    if (!groupFormData.groupName) {
+      showToast.error('Please enter a group name');
+      return;
+    }
+
+    // Validate perspectives
+    const validPerspectives = groupFormData.perspectives.filter(p => p.perspectiveName.trim() !== '');
+    if (validPerspectives.length === 0) {
+      showToast.error('Please add at least one perspective');
+      return;
+    }
+
+    try {
+      setCreatingGroup(true);
+      const linkData = {
+        testId: groupFormData.testId,
+        groupName: groupFormData.groupName,
+        perspectives: validPerspectives.map(p => ({
+          perspectiveName: p.perspectiveName.trim(),
+          maxAttempts: p.maxAttempts ? parseInt(p.maxAttempts) : null
+        })),
+        expiresAt: groupFormData.expiresAt ? convertDateToDateTime(groupFormData.expiresAt) : null,
+        notes: groupFormData.notes || ''
+      };
+
+      const response = await createGroupAssessmentLink(linkData);
+      if (response.success && response.data) {
+        showToast.success('Group assessment link created successfully!');
+        setCreatedLink(response.data);
+        setGroupFormData({
+          testId: '',
+          groupName: '',
+          perspectives: [{ perspectiveName: '', maxAttempts: '' }],
+          expiresAt: '',
+          notes: ''
+        });
+        fetchLinks();
+      } else {
+        showToast.error(response.message || 'Failed to create group link');
+      }
+    } catch (error) {
+      console.error('Failed to create group link:', error);
+      showToast.error(error.response?.data?.message || 'Failed to create group assessment link');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const handleAddPerspective = () => {
+    setGroupFormData({
+      ...groupFormData,
+      perspectives: [...groupFormData.perspectives, { perspectiveName: '', maxAttempts: '' }]
+    });
+  };
+
+  const handleRemovePerspective = (index) => {
+    if (groupFormData.perspectives.length > 1) {
+      const newPerspectives = groupFormData.perspectives.filter((_, i) => i !== index);
+      setGroupFormData({
+        ...groupFormData,
+        perspectives: newPerspectives
+      });
+    } else {
+      showToast.error('At least one perspective is required');
+    }
+  };
+
+  const handlePerspectiveChange = (index, field, value) => {
+    const newPerspectives = [...groupFormData.perspectives];
+    newPerspectives[index][field] = value;
+    setGroupFormData({
+      ...groupFormData,
+      perspectives: newPerspectives
+    });
   };
 
   const handleCopyLink = (token) => {
@@ -686,15 +779,26 @@ function AdminAssessmentLinks() {
           <h1 className="text-2xl sm:text-3xl font-bold text-mh-dark">Assessment Links</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">Create and manage shareable assessment links</p>
         </div>
-        <button
-          onClick={() => {
-            setShowCreateModal(true);
-            setCreatedLink(null);
-          }}
-          className="w-full sm:w-auto px-4 py-2 bg-mh-gradient text-white rounded-lg font-medium hover:opacity-90 transition text-sm sm:text-base"
-        >
-          Create New Link
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+          <button
+            onClick={() => {
+              setShowCreateModal(true);
+              setCreatedLink(null);
+            }}
+            className="w-full sm:w-auto px-4 py-2 bg-mh-gradient text-white rounded-lg font-medium hover:opacity-90 transition text-sm sm:text-base"
+          >
+            Create New Link
+          </button>
+          <button
+            onClick={() => {
+              setShowCreateGroupModal(true);
+              setCreatedLink(null);
+            }}
+            className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition text-sm sm:text-base"
+          >
+            Create Group Link
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -1293,6 +1397,217 @@ function AdminAssessmentLinks() {
                       className="flex-1 px-4 py-2 bg-mh-gradient text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 text-sm sm:text-base"
                     >
                       {creating ? 'Creating...' : 'Create Link'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Group Assessment Link Modal */}
+      {showCreateGroupModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 sm:p-6">
+              <div className="flex justify-between items-center mb-4 sm:mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-mh-dark">Create Group Assessment Link</h2>
+                <button
+                  onClick={() => {
+                    setShowCreateGroupModal(false);
+                    setCreatedLink(null);
+                    setGroupFormData({
+                      testId: '',
+                      groupName: '',
+                      perspectives: [{ perspectiveName: '', maxAttempts: '' }],
+                      expiresAt: '',
+                      notes: ''
+                    });
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {createdLink ? (
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-green-800 font-semibold mb-2 text-sm sm:text-base">Group Link Created Successfully!</p>
+                    <div className="bg-white rounded p-3 mb-3">
+                      <p className="text-xs text-gray-500 mb-1">Shareable Link:</p>
+                      <p className="text-xs sm:text-sm font-mono break-all">{window.location.origin}/group-assessment-link/{createdLink.linkToken}/select-role</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const fullLink = `${window.location.origin}/group-assessment-link/${createdLink.linkToken}/select-role`;
+                        navigator.clipboard.writeText(fullLink).then(() => {
+                          showToast.success('Link copied to clipboard!');
+                        }).catch(() => {
+                          showToast.error('Failed to copy link');
+                        });
+                      }}
+                      className="w-full px-4 py-2 bg-mh-gradient text-white rounded-lg font-medium hover:opacity-90 text-sm sm:text-base"
+                    >
+                      Copy Link
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowCreateGroupModal(false);
+                      setCreatedLink(null);
+                      setGroupFormData({
+                        testId: '',
+                        groupName: '',
+                        perspectives: [{ perspectiveName: '', maxAttempts: '' }],
+                        expiresAt: '',
+                        notes: ''
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleCreateGroupLink} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Test <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={groupFormData.testId}
+                      onChange={(e) => setGroupFormData({ ...groupFormData, testId: e.target.value })}
+                      required
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent text-sm sm:text-base"
+                    >
+                      <option value="">Select a test</option>
+                      {tests.map((test) => (
+                        <option key={test._id} value={test._id}>
+                          {test.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Group Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={groupFormData.groupName}
+                      onChange={(e) => setGroupFormData({ ...groupFormData, groupName: e.target.value })}
+                      placeholder="e.g., Multi-Student Assessment or Student Character Assessment"
+                      required
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent text-sm sm:text-base"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      This is a generic name for the link. Student names will be captured during assessment.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Perspectives <span className="text-red-500">*</span>
+                    </label>
+                    <div className="space-y-3">
+                      {groupFormData.perspectives.map((perspective, index) => (
+                        <div key={index} className="flex gap-2 items-start">
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={perspective.perspectiveName}
+                              onChange={(e) => handlePerspectiveChange(index, 'perspectiveName', e.target.value)}
+                              placeholder="e.g., Student, Parent, Teacher"
+                              required={index === 0}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent text-sm"
+                            />
+                          </div>
+                          <div className="w-32">
+                            <input
+                              type="number"
+                              value={perspective.maxAttempts}
+                              onChange={(e) => handlePerspectiveChange(index, 'maxAttempts', e.target.value)}
+                              placeholder="Max attempts"
+                              min="1"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent text-sm"
+                            />
+                          </div>
+                          {groupFormData.perspectives.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePerspective(index)}
+                              className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={handleAddPerspective}
+                        className="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-mh-green hover:bg-green-50 text-gray-600 hover:text-mh-green text-sm"
+                      >
+                        + Add Perspective
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Each perspective represents a role (e.g., Student, Parent, Teacher)</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Expiration Date (Optional)
+                    </label>
+                    <DatePicker
+                      value={groupFormData.expiresAt && groupFormData.expiresAt.includes('T') ? convertDateTimeToDate(groupFormData.expiresAt) : groupFormData.expiresAt || ''}
+                      onChange={(e) => setGroupFormData({ ...groupFormData, expiresAt: e.target.value })}
+                      placeholder="Select expiration date"
+                      min={new Date().toISOString().split('T')[0]}
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent text-sm sm:text-base"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Notes (Optional)
+                    </label>
+                    <textarea
+                      value={groupFormData.notes}
+                      onChange={(e) => setGroupFormData({ ...groupFormData, notes: e.target.value })}
+                      placeholder="Additional notes about this group assessment"
+                      rows={3}
+                      className="w-full px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-mh-green focus:border-transparent text-sm sm:text-base"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateGroupModal(false);
+                        setGroupFormData({
+                          testId: '',
+                          groupName: '',
+                          perspectives: [{ perspectiveName: '', maxAttempts: '' }],
+                          expiresAt: '',
+                          notes: ''
+                        });
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={creatingGroup}
+                      className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium disabled:opacity-50 text-sm sm:text-base"
+                    >
+                      {creatingGroup ? 'Creating...' : 'Create Group Link'}
                     </button>
                   </div>
                 </form>

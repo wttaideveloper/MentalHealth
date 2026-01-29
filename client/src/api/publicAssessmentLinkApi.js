@@ -50,12 +50,20 @@ export const verifyLinkPayment = async (token, paymentId, orderId, participantEm
  * Start anonymous assessment attempt via link
  * @param {string} token - Link token
  * @param {Object} participantInfo - Participant information (name, email, dateOfBirth, gender)
+ * @param {string} perspective - Perspective for group assessment links (optional)
  * @returns {Promise} API response with attempt and test data
  */
-export const startLinkAttempt = async (token, participantInfo = {}) => {
-  const response = await axiosInstance.post(`/public/assessment-links/${token}/start`, {
+export const startLinkAttempt = async (token, participantInfo = {}, perspective = null) => {
+  const requestBody = {
     participantInfo
-  });
+  };
+  
+  // Include perspective if provided (for group assessment links)
+  if (perspective) {
+    requestBody.perspective = perspective;
+  }
+  
+  const response = await axiosInstance.post(`/public/assessment-links/${token}/start`, requestBody);
   return response.data;
 };
 

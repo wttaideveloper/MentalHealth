@@ -7,6 +7,15 @@ const resultSchema = new mongoose.Schema(
     attemptId: { type: mongoose.Schema.Types.ObjectId, ref: "TestAttempt", index: true, required: true },
     linkToken: { type: String, index: true, default: null }, // For anonymous results via assessment link
 
+    // Group assessment fields
+    groupAssessmentId: { type: mongoose.Schema.Types.ObjectId, ref: "GroupAssessment", index: true, default: null },
+    perspective: { 
+      type: String, 
+      enum: ["student", "parent", "teacher", "individual"], 
+      default: "individual",
+      index: true
+    },
+
     score: { type: Number, required: true },
     band: { type: String, default: "" },
     bandDescription: { type: String, default: "" },

@@ -132,6 +132,61 @@ export const getLinkEmailHistory = async (linkId, params = {}) => {
   return response.data;
 };
 
+// ============================================================================
+// GROUP ASSESSMENT LINKS APIs
+// ============================================================================
+
+/**
+ * Get all group assessment links (admin only)
+ * @param {Object} params - Query parameters (isActive, testId)
+ * @returns {Promise} API response with group assessment links list
+ */
+export const getGroupAssessmentLinks = async (params = {}) => {
+  const response = await axiosInstance.get('/admin/group-assessment-links', { params });
+  return response.data;
+};
+
+/**
+ * Create group assessment link (admin only)
+ * @param {Object} data - Group assessment link data
+ * @returns {Promise} API response with created link
+ */
+export const createGroupAssessmentLink = async (data) => {
+  const response = await axiosInstance.post('/admin/group-assessment-links', data);
+  return response.data;
+};
+
+/**
+ * Get group assessment link by ID (admin only)
+ * @param {string} linkId - Link ID
+ * @returns {Promise} API response with link data
+ */
+export const getGroupAssessmentLinkById = async (linkId) => {
+  const response = await axiosInstance.get(`/admin/group-assessment-links/${linkId}`);
+  return response.data;
+};
+
+/**
+ * Update group assessment link (admin only)
+ * @param {string} linkId - Link ID
+ * @param {Object} data - Updated link data
+ * @returns {Promise} API response
+ */
+export const updateGroupAssessmentLink = async (linkId, data) => {
+  const response = await axiosInstance.put(`/admin/group-assessment-links/${linkId}`, data);
+  return response.data;
+};
+
+/**
+ * Delete group assessment link (admin only)
+ * @param {string} linkId - Link ID
+ * @returns {Promise} API response
+ */
+export const deleteGroupAssessmentLink = async (linkId) => {
+  const response = await axiosInstance.delete(`/admin/group-assessment-links/${linkId}`);
+  return response.data;
+};
+
 /**
  * Get all email history across all assessment links (admin only)
  * @param {Object} params - Query parameters (page, limit, status, linkId)

@@ -38,8 +38,10 @@ router.post(
       name: Joi.string().optional(),
       email: Joi.string().email().optional(),
       dateOfBirth: Joi.string().optional(),
-      gender: Joi.string().optional()
-    }).optional()
+      gender: Joi.string().optional(),
+      studentName: Joi.string().optional() // For group assessment links (Parent/Teacher roles)
+    }).optional(),
+    perspective: Joi.string().optional() // For group assessment links
   })),
   publicAssessmentLinkController.start
 );
@@ -60,6 +62,12 @@ router.post(
     answers: Joi.object().optional()
   })),
   publicAssessmentLinkController.submit
+);
+
+// Get student name suggestions for group assessment links (public, no auth required)
+router.get(
+  "/:token/student-suggestions",
+  publicAssessmentLinkController.getStudentNameSuggestions
 );
 
 module.exports = router;

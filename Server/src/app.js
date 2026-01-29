@@ -21,6 +21,9 @@ const adminTestsRoutes = require("./routes/admintests.routes");
 const assessmentLinkRoutes = require("./routes/assessmentLink.routes");
 const publicAssessmentLinkRoutes = require("./routes/publicAssessmentLink.routes");
 const uploadRoutes = require("./routes/upload.routes");
+const groupAssessmentRoutes = require("./routes/groupAssessment.routes");
+const groupAssessmentLinkRoutes = require("./routes/groupAssessmentLink.routes");
+const publicGroupAssessmentLinkRoutes = require("./routes/publicGroupAssessmentLink.routes");
 
 async function createApp() {
   const app = express();
@@ -118,6 +121,9 @@ async function createApp() {
   app.use("/api/admin/assessment-links", assessmentLinkRoutes);
   app.use("/api/public/assessment-links", publicAssessmentLinkRoutes);
   app.use("/api/upload", uploadRoutes);
+  app.use("/api/group-assessments", groupAssessmentRoutes);
+  app.use("/api/admin/group-assessment-links", groupAssessmentLinkRoutes);
+  app.use("/api/public/group-assessment-links", publicGroupAssessmentLinkRoutes);
 
   // Frontend serving removed - now runs independently
   // API routes only

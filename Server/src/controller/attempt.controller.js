@@ -3,6 +3,7 @@ const { ok, created } = require("../utils/Response");
 const { Test } = require("../model/Test");
 const { TestAttempt } = require("../model/TestAttempt");
 const { Result } = require("../model/Result");
+const { GroupAssessment } = require("../model/GroupAssessment");
 const { checkEligibility } = require("../services/eligibility.service");
 const { computeScore } = require("../services/scoring.service");
 const { evaluateRisk } = require("../services/risk.service");
@@ -105,18 +106,88 @@ exports.loadTest = asyncHandler(async (req, res, next) => {
 /**
  * Start a new test attempt
  * Creates a new TestAttempt document and returns it with test schema
+ * Supports group assessment context via query params: groupAssessmentId and perspective
  */
 exports.start = asyncHandler(async (req, res) => {
   const { testId } = req.params;
   const userId = req.user._id;
   const testDoc = req.test;
+  const { groupAssessmentId, perspective } = req.query;
   
-  // Check if user already has an in_progress attempt for this test
-  const existingAttempt = await TestAttempt.findOne({
+  // Validate perspective if groupAssessmentId is provided
+  if (groupAssessmentId && !perspective) {
+    return res.status(400).json({ 
+      success: false, 
+      message: "perspective is required when groupAssessmentId is provided" 
+    });
+  }
+  
+  // If group assessment context, verify it exists and user has access
+  let groupAssessment = null;
+  if (groupAssessmentId) {
+    groupAssessment = await GroupAssessment.findById(groupAssessmentId)
+      .populate("perspectives.userId");
+    
+    if (!groupAssessment) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Group assessment not found" 
+      });
+    }
+    
+    if (!perspective) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "perspective is required when groupAssessmentId is provided" 
+      });
+    }
+    
+    // Find the perspective in the array
+    const perspectiveObj = groupAssessment.perspectives.find(p => 
+      p.perspectiveName === perspective
+    );
+    
+    if (!perspectiveObj) {
+      return res.status(404).json({ 
+        success: false, 
+        message: `Perspective "${perspective}" not found in this group assessment` 
+      });
+    }
+    
+    // Verify user is assigned to this perspective
+    const perspectiveUserId = perspectiveObj.userId._id 
+      ? perspectiveObj.userId._id 
+      : perspectiveObj.userId;
+    
+    if (perspectiveUserId.toString() !== userId.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "You are not assigned to this perspective for this group assessment" 
+      });
+    }
+    
+    // Check if result already exists for this perspective
+    if (perspectiveObj.resultId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Result already exists for this perspective in this group assessment" 
+      });
+    }
+  }
+  
+  // Check if user already has an in_progress attempt for this test (and group assessment if applicable)
+  const attemptFilter = {
     userId,
     testId,
     status: "in_progress"
-  });
+  };
+  
+  if (groupAssessmentId) {
+    attemptFilter.groupAssessmentId = groupAssessmentId;
+    attemptFilter.perspective = perspective;
+  }
+  
+  const existingAttempt = await TestAttempt.findOne(attemptFilter);
   
   if (existingAttempt) {
     // Return existing attempt instead of creating new one
@@ -147,8 +218,18 @@ exports.start = asyncHandler(async (req, res) => {
     answers: {},
     startedAt: new Date(),
     timeLimitSeconds: testDoc.timeLimitSeconds || 0,
-    expiresAt
+    expiresAt,
+    groupAssessmentId: groupAssessmentId || null,
+    perspective: perspective || "individual"
   });
+  
+  // Update group assessment status if applicable
+  if (groupAssessment) {
+    if (groupAssessment.status === "pending") {
+      groupAssessment.status = "in_progress";
+      await groupAssessment.save();
+    }
+  }
   
   const attemptData = newAttempt.toObject();
   
@@ -291,21 +372,51 @@ exports.submit = asyncHandler(async (req, res) => {
     userId,
     testId: attempt.testId,
     attemptId: attempt._id,
+    groupAssessmentId: attempt.groupAssessmentId || null,
+    perspective: attempt.perspective || "individual",
     score: scoreResult.score,
     band: scoreResult.band,
     bandDescription: scoreResult.bandDescription,
     subscales: scoreResult.subscales,
-    categoryResults: scoreResult.categoryResults || {},
+    categoryResults: scoreResult.categoryResults ? Object.fromEntries(scoreResult.categoryResults) : {},
     interpretation: {
       band: scoreResult.band,
       score: scoreResult.score,
       answeredCount: scoreResult.answeredCount,
       totalItems: scoreResult.totalItems,
       riskHelpText: riskResult.hasRisk ? riskResult.helpText : null,
-      categoryResults: scoreResult.categoryResults || {}
+      categoryResults: scoreResult.categoryResults ? Object.fromEntries(scoreResult.categoryResults) : {}
     },
     riskFlags: riskResult.flags
   });
+  
+  // If this is part of a group assessment, update the group assessment
+  if (attempt.groupAssessmentId && attempt.perspective) {
+    const groupAssessment = await GroupAssessment.findById(attempt.groupAssessmentId);
+    if (groupAssessment) {
+      // Find and update the perspective in the array
+      const perspectiveIndex = groupAssessment.perspectives.findIndex(p => 
+        p.perspectiveName === attempt.perspective
+      );
+      
+      if (perspectiveIndex !== -1) {
+        groupAssessment.perspectives[perspectiveIndex].resultId = resultDoc._id;
+        
+        // Check if all perspectives have results
+        const completedCount = groupAssessment.perspectives.filter(p => p.resultId).length;
+        const totalCount = groupAssessment.perspectives.length;
+        
+        if (completedCount === totalCount && totalCount > 0) {
+          groupAssessment.status = "completed";
+          groupAssessment.completedAt = new Date();
+        } else {
+          groupAssessment.status = "in_progress";
+        }
+        
+        await groupAssessment.save();
+      }
+    }
+  }
   
   const resultData = resultDoc.toObject();
   

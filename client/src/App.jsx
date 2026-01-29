@@ -19,6 +19,9 @@ import MyAssessmentsPage from './pages/user/MyAssessmentsPage';
 import AssessmentTestPage from './pages/user/AssessmentTestPage';
 import AssessmentTestResultPage from './pages/user/AssessmentTestResultPage';
 import ProfilePage from './pages/user/ProfilePage';
+import GroupAssessmentDashboardPage from './pages/user/GroupAssessmentDashboardPage';
+import CreateGroupAssessmentPage from './pages/user/CreateGroupAssessmentPage';
+import CombinedReportPage from './pages/user/CombinedReportPage';
 // Shared Pages
 import AboutUsPage from './pages/shared/AboutUsPage';
 import ContactUsPage from './pages/shared/ContactUsPage';
@@ -30,6 +33,8 @@ import AssessmentViaLinkPage2 from './pages/assessmentViaLink/AssessmentViaLinkP
 import AssessmentViaLinkPaymentPage from './pages/assessmentViaLink/AssessmentViaLinkPaymentPage';
 import AssessmentViaLinkTestPage from './pages/assessmentViaLink/AssessmentViaLinkTestPage';
 import AssessmentViaLinkResultPage from './pages/assessmentViaLink/AssessmentViaLinkResultPage';
+// Group Assessment Via Link Pages
+import GroupAssessmentRoleSelectionPage from './pages/assessmentViaLink/GroupAssessmentRoleSelectionPage';
 // Other Pages 
 import DashboardPage from './pages/dashboard/DashboardPage';
 import PaymentPage from './pages/payment/PaymentPage';
@@ -42,6 +47,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import AdminAssessments from './pages/admin/AdminTests';
 import AdminResults from './pages/admin/AdminResults';
 import AdminAssessmentLinks from './pages/admin/AdminAssessmentLinks';
+import AdminGroupAssessments from './pages/admin/AdminGroupAssessments';
 import AdminRoute from './components/AdminRoute';
 import AdminLayout from './components/AdminLayout';
 
@@ -108,6 +114,10 @@ function App() {
         <Route path="/profile" element={<Layout isLoggedIn={true}><ProfilePage /></Layout>} />
         <Route path="/assessment-test/:id" element={<Layout isLoggedIn={true}><AssessmentTestPage /></Layout>} />
         <Route path="/test-result/:id" element={<Layout isLoggedIn={true}><AssessmentTestResultPage /></Layout>} />
+        <Route path="/user/group-assessments" element={<Layout isLoggedIn={true}><GroupAssessmentDashboardPage /></Layout>} />
+        <Route path="/user/group-assessments/create" element={<Layout isLoggedIn={true}><CreateGroupAssessmentPage /></Layout>} />
+        <Route path="/user/group-assessments/:groupId" element={<Layout isLoggedIn={true}><GroupAssessmentDashboardPage /></Layout>} />
+        <Route path="/user/group-assessments/:groupId/report" element={<Layout isLoggedIn={true}><CombinedReportPage /></Layout>} />
         
         {/* Assessment Via Link Routes */}
         <Route path="/assessment-link/:token" element={<Layout showHeaderFooter={false}><AssessmentViaLinkPage1 /></Layout>} />
@@ -115,6 +125,12 @@ function App() {
         <Route path="/assessment-link/:token/payment" element={<Layout showHeaderFooter={false}><AssessmentViaLinkPaymentPage /></Layout>} />
         <Route path="/assessment-link/:token/test/:attemptId" element={<Layout showHeaderFooter={false}><AssessmentViaLinkTestPage /></Layout>} />
         <Route path="/assessment-link/:token/result/:resultId" element={<Layout showHeaderFooter={false}><AssessmentViaLinkResultPage /></Layout>} />
+        
+        {/* Group Assessment Via Link Routes */}
+        <Route path="/group-assessment-link/:token/select-role" element={<Layout showHeaderFooter={false}><GroupAssessmentRoleSelectionPage /></Layout>} />
+        <Route path="/group-assessment-link/:token/step2" element={<Layout showHeaderFooter={false}><AssessmentViaLinkPage2 /></Layout>} />
+        <Route path="/group-assessment-link/:token/test/:attemptId" element={<Layout showHeaderFooter={false}><AssessmentViaLinkTestPage /></Layout>} />
+        <Route path="/group-assessment-link/:token/result/:resultId" element={<Layout showHeaderFooter={false}><AssessmentViaLinkResultPage /></Layout>} />
         
         {/* Assessment & Payment Routes */}
         <Route path="/dashboard" element={<Layout isLoggedIn={true}><DashboardPage /></Layout>} />
@@ -178,6 +194,16 @@ function App() {
             <AdminRoute>
               <AdminLayout>
                 <AdminAssessmentLinks />
+              </AdminLayout>
+            </AdminRoute>
+          } 
+        />
+        <Route 
+          path="/admin/group-assessments" 
+          element={
+            <AdminRoute>
+              <AdminLayout>
+                <AdminGroupAssessments />
               </AdminLayout>
             </AdminRoute>
           } 

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Calendar, ChevronDown, Lock } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import assessmentLinkImg from '../../assets/images/Assesment-link.png'
 import assLink1 from '../../assets/images/ass-link-1.png'
 import { startLinkAttempt, validateAssessmentLink } from '../../api/publicAssessmentLinkApi'
+import axiosInstance from '../../utils/config/axiosInstance'
 import DatePicker from '../../components/DatePicker'
 
 const AssessmentViaLinkPage2 = () => {
@@ -15,10 +16,16 @@ const AssessmentViaLinkPage2 = () => {
     email: '',
     dateOfBirth: '',
     gender: '',
+    studentName: '', // For Parent/Teacher roles
     consent: false
   })
   const [loading, setLoading] = useState(false)
   const [linkData, setLinkData] = useState(null)
+  const [selectedPerspective, setSelectedPerspective] = useState(null)
+  const [isGroupAssessment, setIsGroupAssessment] = useState(false)
+  const [studentSuggestions, setStudentSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const suggestionsRef = useRef(null)
 
   useEffect(() => {
     if (!token) {
@@ -34,11 +41,73 @@ const AssessmentViaLinkPage2 = () => {
       const response = await validateAssessmentLink(token)
       if (response.success && response.data) {
         setLinkData(response.data.link)
+        setIsGroupAssessment(response.data.link.isGroupAssessment || false)
+        
+        // Get selected perspective from localStorage
+        const storedPerspective = localStorage.getItem(`groupPerspective_${token}`)
+        if (storedPerspective) {
+          setSelectedPerspective(storedPerspective)
+          // If Student role, use their name as student name
+          if (storedPerspective.toLowerCase() === 'student') {
+            // Will be set when they enter their name
+          }
+        }
       }
     } catch (err) {
       console.error('Error loading link data:', err)
     }
   }
+
+  // Fetch student name suggestions
+  const fetchStudentSuggestions = async (query) => {
+    if (!isGroupAssessment || !query || query.length < 2) {
+      setStudentSuggestions([])
+      return
+    }
+
+    try {
+      const response = await axiosInstance.get(`/public/assessment-links/${token}/student-suggestions`, {
+        params: { q: query }
+      })
+      if (response.data.success) {
+        setStudentSuggestions(response.data.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching suggestions:', err)
+      setStudentSuggestions([])
+    }
+  }
+
+  // Handle student name input with debounce
+  useEffect(() => {
+    if (!isGroupAssessment || selectedPerspective?.toLowerCase() === 'student') {
+      return
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (formData.studentName && formData.studentName.length >= 2) {
+        fetchStudentSuggestions(formData.studentName)
+        setShowSuggestions(true)
+      } else {
+        setStudentSuggestions([])
+        setShowSuggestions(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(timeoutId)
+  }, [formData.studentName, isGroupAssessment, selectedPerspective, token])
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
+        setShowSuggestions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
 
   const handleInputChange = (e) => {
@@ -60,12 +129,37 @@ const AssessmentViaLinkPage2 = () => {
       return
     }
 
+    // Validate full name (required for all)
+    if (!formData.fullName || formData.fullName.trim() === '') {
+      toast.error('Please enter your full name')
+      return
+    }
+
+    // Validate student name for Parent/Teacher roles
+    if (isGroupAssessment && selectedPerspective && selectedPerspective.toLowerCase() !== 'student') {
+      if (!formData.studentName || formData.studentName.trim() === '') {
+        toast.error('Please enter the student name')
+        return
+      }
+    }
+
     // Store participant info for payment page
     const participantInfo = {
       name: formData.fullName,
       email: formData.email,
       dateOfBirth: formData.dateOfBirth,
       gender: formData.gender
+    }
+
+    // Add student name for group assessments
+    if (isGroupAssessment) {
+      if (selectedPerspective?.toLowerCase() === 'student') {
+        // For Student role, use their own name
+        participantInfo.studentName = formData.fullName
+      } else {
+        // For Parent/Teacher roles, use the entered student name
+        participantInfo.studentName = formData.studentName
+      }
     }
     localStorage.setItem(`linkParticipant_${token}`, JSON.stringify(participantInfo))
 
@@ -75,16 +169,24 @@ const AssessmentViaLinkPage2 = () => {
       return
     }
 
+    // Check if this is a group assessment link
+    const storedPerspective = localStorage.getItem(`groupPerspective_${token}`)
+    const perspective = storedPerspective || null
+
     // For free links, proceed directly
     try {
       setLoading(true)
       
-      const response = await startLinkAttempt(token, participantInfo)
+      const response = await startLinkAttempt(token, participantInfo, perspective)
       
       if (response.success && response.data?.attempt) {
         const attemptId = response.data.attempt._id
         // Store attemptId in localStorage for the test page
         localStorage.setItem(`linkAttempt_${token}`, attemptId)
+        // Clear stored perspective after use
+        if (storedPerspective) {
+          localStorage.removeItem(`groupPerspective_${token}`)
+        }
         // Navigate to test page with token and attemptId
         navigate(`/assessment-link/${token}/test/${attemptId}`)
       } else {
@@ -130,17 +232,64 @@ const AssessmentViaLinkPage2 = () => {
           {/* Full Name */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Full Name
+              {isGroupAssessment && selectedPerspective?.toLowerCase() === 'student' 
+                ? 'Student Name' 
+                : 'Full Name'}
             </label>
             <input
               type="text"
               name="fullName"
               value={formData.fullName}
               onChange={handleInputChange}
-              placeholder="Enter your full name"
+              placeholder={isGroupAssessment && selectedPerspective?.toLowerCase() === 'student' 
+                ? "Enter student name" 
+                : "Enter your full name"}
               className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
+
+          {/* Student Name Field for Parent/Teacher */}
+          {isGroupAssessment && selectedPerspective && selectedPerspective.toLowerCase() !== 'student' && (
+            <div className="mb-6 relative" ref={suggestionsRef}>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Student Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="studentName"
+                value={formData.studentName}
+                onChange={handleInputChange}
+                onFocus={() => {
+                  if (studentSuggestions.length > 0) {
+                    setShowSuggestions(true)
+                  }
+                }}
+                placeholder="Enter the student's name"
+                className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+              />
+              {showSuggestions && studentSuggestions.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+                  {studentSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, studentName: suggestion.name }))
+                        setShowSuggestions(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-green-50 transition-colors"
+                    >
+                      <div className="font-medium text-gray-800">{suggestion.name}</div>
+                      {suggestion.similarity < 100 && (
+                        <div className="text-xs text-gray-500">Similarity: {suggestion.similarity}%</div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Email */}
           <div className="mb-6">

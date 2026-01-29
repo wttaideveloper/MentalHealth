@@ -46,6 +46,7 @@ const AssessmentViaLinkPage1 = () => {
   const validateLink = async () => {
     try {
       setLoading(true)
+      // First try regular assessment link
       const response = await validateAssessmentLink(token)
       
       if (response.success && response.data) {
@@ -55,6 +56,20 @@ const AssessmentViaLinkPage1 = () => {
         toast.error(response.message || 'Invalid assessment link')
       }
     } catch (err) {
+      // If regular link fails, check if it's a group assessment link
+      try {
+        const { validateGroupAssessmentLink } = await import('../../api/groupAssessmentLinkApi')
+        const groupResponse = await validateGroupAssessmentLink(token)
+        
+        if (groupResponse.success && groupResponse.data) {
+          // Redirect to group assessment role selection page
+          window.location.href = `/group-assessment-link/${token}/select-role`
+          return
+        }
+      } catch (groupErr) {
+        console.error('Error validating group link:', groupErr)
+      }
+      
       console.error('Error validating link:', err)
       toast.error(err.response?.data?.message || 'Failed to validate assessment link')
     } finally {
