@@ -39,7 +39,8 @@ router.post(
       email: Joi.string().email().optional(),
       dateOfBirth: Joi.string().optional(),
       gender: Joi.string().optional(),
-      studentName: Joi.string().optional() // For group assessment links (Parent/Teacher roles)
+      studentName: Joi.string().optional(), // For group assessment links (Parent/Teacher roles)
+      subjectId: Joi.string().optional() // Student profile ID for group assessment links
     }).optional(),
     perspective: Joi.string().optional() // For group assessment links
   })),

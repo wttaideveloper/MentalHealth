@@ -23,7 +23,26 @@ const publicAssessmentLinkRoutes = require("./routes/publicAssessmentLink.routes
 const uploadRoutes = require("./routes/upload.routes");
 const groupAssessmentRoutes = require("./routes/groupAssessment.routes");
 const groupAssessmentLinkRoutes = require("./routes/groupAssessmentLink.routes");
-const publicGroupAssessmentLinkRoutes = require("./routes/publicGroupAssessmentLink.routes");
+let publicGroupAssessmentLinkRoutes;
+try {
+  console.log("[APP] About to require publicGroupAssessmentLink.routes...");
+  publicGroupAssessmentLinkRoutes = require("./routes/publicGroupAssessmentLink.routes");
+  console.log("✅ publicGroupAssessmentLinkRoutes loaded successfully");
+  console.log("✅ Route type:", typeof publicGroupAssessmentLinkRoutes);
+  console.log("✅ Route is function:", typeof publicGroupAssessmentLinkRoutes === 'function');
+  console.log("✅ Route has stack:", Array.isArray(publicGroupAssessmentLinkRoutes.stack));
+  if (Array.isArray(publicGroupAssessmentLinkRoutes.stack)) {
+    console.log("✅ Route stack length:", publicGroupAssessmentLinkRoutes.stack.length);
+    console.log("✅ Route stack:", publicGroupAssessmentLinkRoutes.stack.map(r => ({
+      path: r.route?.path,
+      method: r.route?.stack?.[0]?.method
+    })));
+  }
+} catch (error) {
+  console.error("❌ Error loading publicGroupAssessmentLinkRoutes:", error);
+  console.error("❌ Error stack:", error.stack);
+  throw error;
+}
 
 async function createApp() {
   const app = express();
@@ -120,10 +139,22 @@ async function createApp() {
   app.use("/api/admin/tests", adminTestsRoutes);
   app.use("/api/admin/assessment-links", assessmentLinkRoutes);
   app.use("/api/public/assessment-links", publicAssessmentLinkRoutes);
+  
+  // Register group assessment link routes BEFORE other routes that might conflict
+  // IMPORTANT: Register BEFORE notFoundMiddleware
+  console.log("[APP] ========================================");
+  console.log("[APP] Registering /api/public/group-assessment-links routes");
+  console.log("[APP] publicGroupAssessmentLinkRoutes type:", typeof publicGroupAssessmentLinkRoutes);
+  console.log("[APP] publicGroupAssessmentLinkRoutes exists:", !!publicGroupAssessmentLinkRoutes);
+  console.log("[APP] ========================================");
+  
+  // Use the router directly - Express will handle route matching properly
+  app.use("/api/public/group-assessment-links", publicGroupAssessmentLinkRoutes);
+  console.log("[APP] ✅ Group assessment link routes registered");
+  
   app.use("/api/upload", uploadRoutes);
   app.use("/api/group-assessments", groupAssessmentRoutes);
   app.use("/api/admin/group-assessment-links", groupAssessmentLinkRoutes);
-  app.use("/api/public/group-assessment-links", publicGroupAssessmentLinkRoutes);
 
   // Frontend serving removed - now runs independently
   // API routes only

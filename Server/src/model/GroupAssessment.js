@@ -4,8 +4,8 @@ const groupAssessmentSchema = new mongoose.Schema(
   {
     testId: { type: mongoose.Schema.Types.ObjectId, ref: "Test", required: true, index: true },
     groupName: { type: String, required: true }, // e.g., "John Doe - Character Assessment" or "Bala" (student name)
-    normalizedStudentName: { type: String, index: true, default: null }, // Normalized student name for fuzzy matching
-    subjectId: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true }, // The subject being assessed (optional)
+    normalizedStudentName: { type: String, index: true, default: null }, // Normalized student name for fuzzy matching (legacy, kept for backward compatibility)
+    subjectId: { type: mongoose.Schema.Types.ObjectId, ref: "StudentProfile", index: true }, // The student profile being assessed (for link-based assessments)
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
     
     // Link to GroupAssessmentLink if created via link
@@ -39,7 +39,8 @@ const groupAssessmentSchema = new mongoose.Schema(
 groupAssessmentSchema.index({ testId: 1, status: 1 });
 groupAssessmentSchema.index({ createdBy: 1, status: 1 });
 groupAssessmentSchema.index({ subjectId: 1 });
-groupAssessmentSchema.index({ groupAssessmentLinkId: 1, normalizedStudentName: 1 }); // For fuzzy matching by student name
+groupAssessmentSchema.index({ groupAssessmentLinkId: 1, subjectId: 1 }); // For finding group assessment by link and student profile
+groupAssessmentSchema.index({ groupAssessmentLinkId: 1, normalizedStudentName: 1 }); // Legacy index for backward compatibility
 
 const GroupAssessment = mongoose.model("GroupAssessment", groupAssessmentSchema);
 module.exports = { GroupAssessment };

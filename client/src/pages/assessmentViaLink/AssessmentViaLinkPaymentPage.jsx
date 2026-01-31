@@ -109,13 +109,21 @@ const AssessmentViaLinkPaymentPage = () => {
       // Wait a moment to ensure payment record is saved
       await new Promise(resolve => setTimeout(resolve, 500))
       
+      // Get perspective for group assessments
+      const storedPerspective = localStorage.getItem(`groupPerspective_${token}`)
+      const perspective = storedPerspective || null
+      
       // Now start the attempt
-      const response = await startLinkAttempt(token, participantInfo)
+      const response = await startLinkAttempt(token, participantInfo, perspective)
       
       if (response.success && response.data?.attempt) {
         const attemptId = response.data.attempt._id
         // Store attemptId in localStorage for the test page
         localStorage.setItem(`linkAttempt_${token}`, attemptId)
+        // Clear stored perspective after use
+        if (storedPerspective) {
+          localStorage.removeItem(`groupPerspective_${token}`)
+        }
         // Navigate to test page with token and attemptId
         navigate(`/assessment-link/${token}/test/${attemptId}`)
       } else {
