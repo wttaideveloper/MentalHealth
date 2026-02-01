@@ -371,9 +371,13 @@ exports.start = asyncHandler(async (req, res) => {
     status: "in_progress"
   };
   
+  // Only add perspective filter for group links
   if (isGroupLink && perspective) {
     attemptFilter.perspective = perspective;
     attemptFilter.groupAssessmentId = null; // Will be set after group assessment is created
+  } else if (!isGroupLink) {
+    // For regular links, ensure perspective is "individual" or not set
+    attemptFilter.perspective = { $in: ["individual", null, undefined] };
   }
   
   const existingAttempt = await TestAttempt.findOne(attemptFilter);
@@ -418,28 +422,30 @@ exports.start = asyncHandler(async (req, res) => {
   // For group assessment links, we'll create/find group assessment in submit function
   // Here we just store the attempt with perspective info
   // Group assessment will be created/found during submit when student name is available
+  // For regular assessment links, always use "individual" perspective
   let groupAssessmentId = null;
 
   // Normalize perspective to lowercase to match enum values
-  const normalizedPerspective = perspective ? perspective.toLowerCase() : null;
+  // Only use perspective for group links; regular links always use "individual"
+  const normalizedPerspective = (isGroupLink && perspective) ? perspective.toLowerCase() : null;
   const attemptPerspective = (isGroupLink && normalizedPerspective) ? normalizedPerspective : "individual";
   console.log(`[START] Creating attempt with perspective: ${attemptPerspective}, isGroupLink: ${isGroupLink}, perspective param: ${perspective}, normalized: ${normalizedPerspective}`); // Debug log
   
-  // Store perspective in participantInfo as backup in case it's not saved in the attempt
+  // Store perspective in participantInfo as backup only for group links
   const participantInfoWithPerspective = participantInfo ? {
     ...participantInfo,
-    perspective: normalizedPerspective // Store perspective in participantInfo as backup
+    ...(isGroupLink && normalizedPerspective ? { perspective: normalizedPerspective } : {})
   } : null;
   
   const attemptData = {
     userId: null, // Anonymous attempt
     testId: linkDoc.testId,
     linkToken: token,
-    groupAssessmentId: groupAssessmentId || null,
-    perspective: attemptPerspective, // This should be saved
+    groupAssessmentId: null, // Will be set during submit for group links only
+    perspective: attemptPerspective, // "individual" for regular links, perspective name for group links
     status: "in_progress",
     answers: {},
-    participantInfo: participantInfoWithPerspective, // Include perspective as backup
+    participantInfo: participantInfoWithPerspective,
     startedAt: new Date(),
     timeLimitSeconds: testDoc.timeLimitSeconds || 0,
     expiresAt
@@ -638,33 +644,42 @@ exports.submit = asyncHandler(async (req, res) => {
   await attempt.save();
 
   // Check if this is a group assessment link attempt
+  // First, check if the link token belongs to a regular assessment link or group assessment link
+  const regularLink = await AssessmentLink.findOne({ linkToken: token });
+  const groupLink = await GroupAssessmentLink.findOne({ linkToken: token });
+  
+  // Determine if this is a group assessment link
+  const isGroupLink = !!groupLink && !regularLink; // Only true if it's a group link AND not a regular link
+  
   let groupAssessmentId = null;
-  // Get perspective from attempt, normalize to handle any casing issues
-  // Handle both actual undefined and string "undefined"
   let perspective = null;
-  if (attempt.perspective && attempt.perspective !== 'undefined' && attempt.perspective !== undefined) {
-    perspective = attempt.perspective.toLowerCase();
-  }
-  let groupLink = null;
   
   console.log(`[SUBMIT] Attempt ID: ${attempt._id}, Token: ${token}`); // Debug log
-  console.log(`[SUBMIT] Attempt perspective from DB: "${attempt.perspective}", type: ${typeof attempt.perspective}, normalized: "${perspective}"`); // Debug log
-  console.log(`[SUBMIT] Attempt groupAssessmentId: ${attempt.groupAssessmentId}`); // Debug log
-  console.log(`[SUBMIT] Attempt participantInfo:`, attempt.participantInfo); // Debug log
+  console.log(`[SUBMIT] Regular link found: ${regularLink ? 'YES' : 'NO'}, Group link found: ${groupLink ? 'YES' : 'NO'}, isGroupLink: ${isGroupLink}`); // Debug log
   
-  if (attempt.groupAssessmentId) {
-    groupAssessmentId = attempt.groupAssessmentId;
-    perspective = attempt.perspective ? attempt.perspective.toLowerCase() : null;
-    console.log(`[SUBMIT] Using existing groupAssessmentId: ${groupAssessmentId}`); // Debug log
-  } else {
-    // Check if this link token belongs to a group assessment link
-    groupLink = await GroupAssessmentLink.findOne({ linkToken: token });
-    console.log(`[SUBMIT] Group link found: ${groupLink ? 'YES' : 'NO'}, Perspective: ${perspective}`); // Debug log
-    console.log(`[SUBMIT] Group link details:`, groupLink ? {
-      _id: groupLink._id,
-      testId: groupLink.testId,
-      perspectives: groupLink.perspectives?.map(p => p.perspectiveName)
-    } : 'NONE'); // Debug log
+  // Only process group assessment logic if this is actually a group assessment link
+  if (isGroupLink) {
+    // Get perspective from attempt, normalize to handle any casing issues
+    if (attempt.perspective && attempt.perspective !== 'undefined' && attempt.perspective !== undefined && attempt.perspective !== 'individual') {
+      perspective = attempt.perspective.toLowerCase();
+    }
+    
+    console.log(`[SUBMIT] Attempt perspective from DB: "${attempt.perspective}", normalized: "${perspective}"`); // Debug log
+    console.log(`[SUBMIT] Attempt groupAssessmentId: ${attempt.groupAssessmentId}`); // Debug log
+    console.log(`[SUBMIT] Attempt participantInfo:`, attempt.participantInfo); // Debug log
+    
+    if (attempt.groupAssessmentId) {
+      groupAssessmentId = attempt.groupAssessmentId;
+      if (!perspective && attempt.perspective) {
+        perspective = attempt.perspective.toLowerCase();
+      }
+      console.log(`[SUBMIT] Using existing groupAssessmentId: ${groupAssessmentId}`); // Debug log
+    } else {
+      console.log(`[SUBMIT] Group link details:`, {
+        _id: groupLink._id,
+        testId: groupLink.testId,
+        perspectives: groupLink.perspectives?.map(p => p.perspectiveName)
+      }); // Debug log
     
     // If perspective is null but we have a group link, try to recover it
     if (groupLink && !perspective) {
@@ -710,13 +725,52 @@ exports.submit = asyncHandler(async (req, res) => {
       }
     }
     
-    if (groupLink && perspective) {
-      // NEW FLOW: Use subjectId (StudentProfile) instead of name matching
-      let subjectId = null;
-      const isStudentRole = perspective.toLowerCase() === 'student';
+      // If perspective is null but we have a group link, try to recover it
+      if (!perspective) {
+        console.log(`[SUBMIT] WARNING: Perspective is null but group link exists! Attempting to recover...`); // Debug log
+        
+        // Method 1: Try to get from participantInfo.perspective (if we stored it)
+        if (attempt.participantInfo && attempt.participantInfo.perspective) {
+          perspective = attempt.participantInfo.perspective.toLowerCase();
+          console.log(`[SUBMIT] Recovered perspective from participantInfo.perspective: ${perspective}`); // Debug log
+        } 
+        // Method 2: Try to infer from participantInfo
+        else if (attempt.participantInfo) {
+          const hasStudentName = !!attempt.participantInfo.studentName;
+          const nameMatchesStudentName = attempt.participantInfo.name && 
+                                         attempt.participantInfo.studentName && 
+                                         attempt.participantInfo.name.toLowerCase() === attempt.participantInfo.studentName.toLowerCase();
+          
+          if (nameMatchesStudentName || (!hasStudentName && attempt.participantInfo.name)) {
+            perspective = 'student';
+            console.log(`[SUBMIT] Inferred perspective as 'student' from participantInfo`); // Debug log
+          } else if (hasStudentName && attempt.participantInfo.name !== attempt.participantInfo.studentName) {
+            const availablePerspectives = groupLink.perspectives.map(p => p.perspectiveName.toLowerCase());
+            if (availablePerspectives.includes('parent')) {
+              perspective = 'parent';
+            } else if (availablePerspectives.includes('teacher')) {
+              perspective = 'teacher';
+            } else {
+              perspective = availablePerspectives[0] || 'student';
+            }
+            console.log(`[SUBMIT] Inferred perspective as '${perspective}' from participantInfo`); // Debug log
+          }
+        }
+        
+        // Method 3: Last resort - use first available perspective
+        if (!perspective && groupLink.perspectives && groupLink.perspectives.length > 0) {
+          perspective = groupLink.perspectives[0].perspectiveName.toLowerCase();
+          console.log(`[SUBMIT] WARNING: Using first perspective as fallback: ${perspective}`); // Debug log
+        }
+      }
       
-            console.log(`[SUBMIT] ParticipantInfo:`, attempt.participantInfo); // Debug log
-      console.log(`[SUBMIT] Perspective: ${perspective}, isStudentRole: ${isStudentRole}`); // Debug log
+      if (perspective) {
+        // NEW FLOW: Use subjectId (StudentProfile) instead of name matching
+        let subjectId = null;
+        const isStudentRole = perspective.toLowerCase() === 'student';
+        
+        console.log(`[SUBMIT] ParticipantInfo:`, attempt.participantInfo); // Debug log
+        console.log(`[SUBMIT] Perspective: ${perspective}, isStudentRole: ${isStudentRole}`); // Debug log
       
       if (isStudentRole) {
         // Student role: Check if subjectId exists in participantInfo (should be set when profile was created)
@@ -815,7 +869,12 @@ exports.submit = asyncHandler(async (req, res) => {
         matchedGroupAssessment.perspectives[perspectiveIndex].participantInfo = attempt.participantInfo;
         await matchedGroupAssessment.save();
       }
+      }
     }
+  } else {
+    // Regular assessment link - use old flow (no group assessment logic)
+    console.log(`[SUBMIT] Regular assessment link - using individual flow (no group assessment logic)`); // Debug log
+    perspective = "individual"; // Regular links are always individual
   }
 
   // Convert categoryResults to plain object if it's a Map
@@ -828,16 +887,16 @@ exports.submit = asyncHandler(async (req, res) => {
     }
   }
 
-      console.log(`[SUBMIT] Creating result with groupAssessmentId: ${groupAssessmentId}, perspective: ${perspective}`); // Debug log
-      
-      // Create result document (with null userId for anonymous)
-      const resultDoc = await Result.create({
-        userId: null, // Anonymous result
-        testId: attempt.testId,
-        attemptId: attempt._id,
-        linkToken: token,
-        groupAssessmentId: groupAssessmentId || null,
-        perspective: perspective || "individual",
+  console.log(`[SUBMIT] Creating result with groupAssessmentId: ${groupAssessmentId || 'null'}, perspective: ${perspective || 'individual'}`); // Debug log
+  
+  // Create result document (with null userId for anonymous)
+  const resultDoc = await Result.create({
+    userId: null, // Anonymous result
+    testId: attempt.testId,
+    attemptId: attempt._id,
+    linkToken: token,
+    groupAssessmentId: groupAssessmentId || null,
+    perspective: perspective || "individual",
     score: scoreResult.score,
     band: scoreResult.band,
     bandDescription: scoreResult.bandDescription,
@@ -855,7 +914,8 @@ exports.submit = asyncHandler(async (req, res) => {
   });
 
   // If this is part of a group assessment, update the group assessment
-  if (groupAssessmentId && perspective) {
+  // Only update if it's actually a group assessment link (not a regular link)
+  if (isGroupLink && groupAssessmentId && perspective && perspective !== 'individual') {
     const groupAssessment = await GroupAssessment.findById(groupAssessmentId);
     if (groupAssessment) {
       // Find and update the perspective in the array

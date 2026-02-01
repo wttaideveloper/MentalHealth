@@ -367,6 +367,51 @@ exports.submit = asyncHandler(async (req, res) => {
   attempt.lastSavedAt = new Date();
   await attempt.save();
   
+  // Convert categoryResults to plain object if it's a Map
+  // Handle null, undefined, Map, or plain object cases safely
+  let categoryResultsObj = null;
+  if (scoreResult.categoryResults != null) {
+    if (scoreResult.categoryResults instanceof Map) {
+      try {
+        // Ensure it's iterable before calling Object.fromEntries
+        if (typeof scoreResult.categoryResults[Symbol.iterator] === 'function') {
+          categoryResultsObj = Object.fromEntries(scoreResult.categoryResults);
+        } else {
+          console.warn('categoryResults is a Map but not iterable, converting to empty object');
+          categoryResultsObj = {};
+        }
+      } catch (err) {
+        console.error('Error converting categoryResults Map to object:', err);
+        categoryResultsObj = {};
+      }
+    } else if (typeof scoreResult.categoryResults === 'object' && !Array.isArray(scoreResult.categoryResults)) {
+      // Already a plain object (not null, not array), use it directly
+      categoryResultsObj = scoreResult.categoryResults;
+    }
+  }
+
+  // Convert subscales to plain object if it's a Map
+  let subscalesObj = null;
+  if (scoreResult.subscales != null) {
+    if (scoreResult.subscales instanceof Map) {
+      try {
+        // Ensure it's iterable before calling Object.fromEntries
+        if (typeof scoreResult.subscales[Symbol.iterator] === 'function') {
+          subscalesObj = Object.fromEntries(scoreResult.subscales);
+        } else {
+          console.warn('subscales is a Map but not iterable, converting to empty object');
+          subscalesObj = {};
+        }
+      } catch (err) {
+        console.error('Error converting subscales Map to object:', err);
+        subscalesObj = {};
+      }
+    } else if (typeof scoreResult.subscales === 'object' && !Array.isArray(scoreResult.subscales)) {
+      // Already a plain object (not null, not array), use it directly
+      subscalesObj = scoreResult.subscales;
+    }
+  }
+
   // Create result document
   const resultDoc = await Result.create({
     userId,
@@ -377,15 +422,15 @@ exports.submit = asyncHandler(async (req, res) => {
     score: scoreResult.score,
     band: scoreResult.band,
     bandDescription: scoreResult.bandDescription,
-    subscales: scoreResult.subscales,
-    categoryResults: scoreResult.categoryResults ? Object.fromEntries(scoreResult.categoryResults) : {},
+    subscales: subscalesObj,
+    categoryResults: categoryResultsObj,
     interpretation: {
       band: scoreResult.band,
       score: scoreResult.score,
       answeredCount: scoreResult.answeredCount,
       totalItems: scoreResult.totalItems,
       riskHelpText: riskResult.hasRisk ? riskResult.helpText : null,
-      categoryResults: scoreResult.categoryResults ? Object.fromEntries(scoreResult.categoryResults) : {}
+      categoryResults: categoryResultsObj
     },
     riskFlags: riskResult.flags
   });

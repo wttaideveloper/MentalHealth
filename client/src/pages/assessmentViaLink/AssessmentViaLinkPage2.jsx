@@ -49,9 +49,13 @@ const AssessmentViaLinkPage2 = () => {
   }, [token, navigate])
 
   useEffect(() => {
-    // Load students list for Parent/Teacher roles
+    // Load students list ONLY for group assessment Parent/Teacher roles
+    // Regular assessment links should NOT load students
     if (isGroupAssessment && selectedPerspective && selectedPerspective.toLowerCase() !== 'student') {
       loadStudents()
+    } else if (!isGroupAssessment) {
+      // For regular assessment links, clear students list
+      setStudents([])
     }
   }, [token, isGroupAssessment, selectedPerspective])
 
@@ -75,6 +79,12 @@ const AssessmentViaLinkPage2 = () => {
   }
 
   const loadStudents = async () => {
+    // Only load students for group assessments
+    if (!isGroupAssessment) {
+      setStudents([])
+      return
+    }
+    
     try {
       setLoadingStudents(true)
       const response = await getStudents(token)
@@ -88,11 +98,14 @@ const AssessmentViaLinkPage2 = () => {
       }
     } catch (err) {
       console.error('Error loading students:', err)
-      toast.error('Failed to load students list')
+      // Only show error for group assessments
+      if (isGroupAssessment) {
+        toast.error('Failed to load students list')
+      }
       setStudents([])
     } finally {
       setLoadingStudents(false)
-      }
+    }
   }
 
   const handleStudentFormChange = (e) => {
@@ -207,7 +220,8 @@ const AssessmentViaLinkPage2 = () => {
       return
     }
 
-    if (!participantFormData.selectedStudentId) {
+    // Only require student selection for group assessment Parent/Teacher roles
+    if (isParentOrTeacherRole && !participantFormData.selectedStudentId) {
       toast.error('Please select a student')
       return
     }
@@ -215,12 +229,20 @@ const AssessmentViaLinkPage2 = () => {
     try {
       setLoading(true)
       
-      // Prepare participant info with subjectId
-      // For Parent/Teacher, only name and subjectId are needed
-      const participantInfo = {
-        name: participantFormData.fullName.trim(),
-        subjectId: participantFormData.selectedStudentId
-      }
+      // Prepare participant info
+      // For Group Assessment Parent/Teacher: name and subjectId
+      // For Regular Assessment Links: name, email, dateOfBirth, gender (old flow)
+      const participantInfo = isParentOrTeacherRole
+        ? {
+            name: participantFormData.fullName.trim(),
+            subjectId: participantFormData.selectedStudentId
+          }
+        : {
+            name: participantFormData.fullName.trim(),
+            email: participantFormData.email || undefined,
+            dateOfBirth: participantFormData.dateOfBirth || undefined,
+            gender: participantFormData.gender || undefined
+          }
 
       localStorage.setItem(`linkParticipant_${token}`, JSON.stringify(participantInfo))
 
@@ -231,8 +253,9 @@ const AssessmentViaLinkPage2 = () => {
       }
 
       // Start attempt
+      // Only pass perspective for group assessments
       const storedPerspective = localStorage.getItem(`groupPerspective_${token}`)
-      const perspective = storedPerspective || null
+      const perspective = isGroupAssessment ? (storedPerspective || null) : null
 
       const attemptResponse = await startLinkAttempt(token, participantInfo, perspective)
       
@@ -261,6 +284,7 @@ const AssessmentViaLinkPage2 = () => {
   }
 
   const isStudentRole = isGroupAssessment && selectedPerspective?.toLowerCase() === 'student'
+  const isParentOrTeacherRole = isGroupAssessment && selectedPerspective && selectedPerspective.toLowerCase() !== 'student'
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
@@ -360,59 +384,117 @@ const AssessmentViaLinkPage2 = () => {
               </div>
             </>
           ) : (
-            /* Parent/Teacher Role Form */
+            /* Regular Assessment Link Form OR Parent/Teacher Role Form for Group Assessment */
             <>
               <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {selectedPerspective === 'Parent' ? 'Parent Name' : selectedPerspective === 'Teacher' ? 'Teacher Name' : 'Full Name'} <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {isParentOrTeacherRole 
+                    ? (selectedPerspective === 'Parent' ? 'Parent Name' : selectedPerspective === 'Teacher' ? 'Teacher Name' : 'Full Name')
+                    : 'Full Name'} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
                   name="fullName"
                   value={participantFormData.fullName}
                   onChange={handleParticipantFormChange}
-                  placeholder={`Enter ${selectedPerspective?.toLowerCase() || 'your'} name`}
-                className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                required
-              />
-            </div>
-            
-              {/* Student Selection */}
-              <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Student <span className="text-red-500">*</span>
-              </label>
-                {loadingStudents ? (
-                  <div className="w-full px-4 py-3 bg-gray-200 rounded-lg text-gray-500">
-                    Loading students...
+                  placeholder={`Enter ${isParentOrTeacherRole ? (selectedPerspective?.toLowerCase() || 'your') : 'your'} name`}
+                  className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required
+                />
+              </div>
+
+              {/* Student Selection - ONLY for Group Assessment Parent/Teacher roles */}
+              {isParentOrTeacherRole && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Student <span className="text-red-500">*</span>
+                  </label>
+                  {loadingStudents ? (
+                    <div className="w-full px-4 py-3 bg-gray-200 rounded-lg text-gray-500">
+                      Loading students...
+                    </div>
+                  ) : students.length === 0 ? (
+                    <div className="w-full px-4 py-3 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-yellow-800">
+                        <AlertCircle className="w-5 h-5" />
+                        <span className="text-sm font-medium">No students found. Student must complete the assessment first.</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <select
+                        name="selectedStudentId"
+                        value={participantFormData.selectedStudentId}
+                        onChange={handleParticipantFormChange}
+                        className="w-full px-4 py-3 pr-10 bg-gray-200 border-0 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
+                        required
+                      >
+                        <option value="">Select a student</option>
+                        {students.map((student) => (
+                          <option key={student._id} value={student._id}>
+                            {student.name} {student.classGrade ? `- ${student.classGrade}` : ''} {student.school ? `(${student.school})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Regular Assessment Link Fields - Only show for non-group assessments */}
+              {!isGroupAssessment && (
+                <>
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={participantFormData.email}
+                      onChange={handleParticipantFormChange}
+                      placeholder="Enter your email"
+                      className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
                   </div>
-                ) : students.length === 0 ? (
-                  <div className="w-full px-4 py-3 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-yellow-800">
-                      <AlertCircle className="w-5 h-5" />
-                      <span className="text-sm font-medium">No students found. Student must complete the assessment first.</span>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Date of Birth
+                    </label>
+                    <DatePicker
+                      value={participantFormData.dateOfBirth}
+                      onChange={handleParticipantFormChange}
+                      max={new Date().toISOString().split('T')[0]}
+                      placeholder="Select date of birth"
+                      className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      name="dateOfBirth"
+                    />
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Gender
+                    </label>
+                    <div className="relative">
+                      <select
+                        name="gender"
+                        value={participantFormData.gender}
+                        onChange={handleParticipantFormChange}
+                        className="w-full px-4 py-3 pr-10 bg-gray-200 border-0 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
+                      >
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                        <option value="Prefer not to say">Prefer not to say</option>
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
                     </div>
                   </div>
-                ) : (
-              <div className="relative">
-                <select
-                      name="selectedStudentId"
-                      value={participantFormData.selectedStudentId}
-                      onChange={handleParticipantFormChange}
-                  className="w-full px-4 py-3 pr-10 bg-gray-200 border-0 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
-                      required
-                >
-                      <option value="">Select a student</option>
-                      {students.map((student) => (
-                        <option key={student._id} value={student._id}>
-                          {student.name} {student.classGrade ? `- ${student.classGrade}` : ''} {student.school ? `(${student.school})` : ''}
-                        </option>
-                      ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-              </div>
+                </>
               )}
-            </div>
             </>
           )}
 
@@ -498,7 +580,7 @@ const AssessmentViaLinkPage2 = () => {
             disabled={
               (isStudentRole ? !studentFormData.consent : !participantFormData.consent) || 
               loading || 
-              (!isStudentRole && students.length === 0)
+              (isParentOrTeacherRole && students.length === 0)
             }
             className="w-full bg-mh-gradient disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-4 px-8 rounded-full transition-colors duration-200 text-base"
           >
