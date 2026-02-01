@@ -64,13 +64,38 @@ function AssessmentViaLinkTestPage() {
           const parsedQuestions = parseQuestions(validateResponse.data.test.schemaJson || {});
           setQuestions(parsedQuestions);
           
-          // Load saved answers from attempt (if any)
-          // For now, we'll start with empty answers
-          // In a full implementation, you'd fetch the attempt to get saved answers
-          setAttempt({ _id: attemptId, answers: {} });
+          // Try to load saved answers by making a save request with empty answers
+          // This will also validate that the attempt exists and is in progress
+          try {
+            const saveResponse = await saveLinkAttempt(token, attemptId, {});
+            if (saveResponse.success && saveResponse.data?.attempt) {
+              const attemptData = saveResponse.data.attempt;
+              // Check if attempt is already submitted
+              if (attemptData.status !== 'in_progress') {
+                toast.error(`This attempt has already been ${attemptData.status}`);
+                navigate(`/assessment-link/${token}`);
+                return;
+              }
+              // Load saved answers if any
+              setAttempt({ _id: attemptId, answers: attemptData.answers || {} });
+              setAnswers(attemptData.answers || {});
+            }
+          } catch (saveErr) {
+            // If save fails, the attempt might not exist or be invalid
+            console.error('Error loading attempt:', saveErr);
+            const errorMessage = saveErr.response?.data?.message || 'Failed to load attempt';
+            if (errorMessage.includes('submitted') || errorMessage.includes('expired')) {
+              toast.error('This attempt has already been completed');
+              navigate(`/assessment-link/${token}`);
+              return;
+            }
+            // For other errors, just start with empty answers
+            setAttempt({ _id: attemptId, answers: {} });
+          }
         }
       } else {
         toast.error('Invalid attempt');
+        navigate(`/assessment-link/${token}`);
       }
     } catch (err) {
       console.error('Error initializing test:', err);
@@ -117,8 +142,15 @@ function AssessmentViaLinkTestPage() {
       return;
     }
 
+    // Prevent double submission
+    if (submitting) {
+      console.log('Submit already in progress, ignoring duplicate call');
+      return;
+    }
+
     try {
       setSubmitting(true);
+      console.log('Submitting attempt:', { token, attemptId, answersCount: Object.keys(answers).length });
       const response = await submitLinkAttempt(token, attemptId, answers);
       
       if (response.success && response.data?.result) {
@@ -132,7 +164,13 @@ function AssessmentViaLinkTestPage() {
       }
     } catch (err) {
       console.error('Error submitting:', err);
-      toast.error(err.response?.data?.message || 'Failed to submit assessment');
+      const errorMessage = err.response?.data?.message || 'Failed to submit assessment';
+      console.error('Error details:', {
+        status: err.response?.status,
+        message: errorMessage,
+        data: err.response?.data
+      });
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

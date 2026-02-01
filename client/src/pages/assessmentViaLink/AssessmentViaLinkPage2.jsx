@@ -92,7 +92,7 @@ const AssessmentViaLinkPage2 = () => {
       setStudents([])
     } finally {
       setLoadingStudents(false)
-    }
+      }
   }
 
   const handleStudentFormChange = (e) => {
@@ -129,8 +129,8 @@ const AssessmentViaLinkPage2 = () => {
 
     if (!studentFormData.dateOfBirth) {
       toast.error('Please enter date of birth')
-      return
-    }
+        return
+      }
 
     if (!studentFormData.classGrade || !studentFormData.classGrade.trim()) {
       toast.error('Please enter class/grade')
@@ -163,17 +163,17 @@ const AssessmentViaLinkPage2 = () => {
         subjectId: subjectId
       }
 
-      localStorage.setItem(`linkParticipant_${token}`, JSON.stringify(participantInfo))
+    localStorage.setItem(`linkParticipant_${token}`, JSON.stringify(participantInfo))
 
-      // If payment is required, redirect to payment page
-      if (linkData && linkData.linkType === 'paid' && linkData.price > 0) {
-        navigate(`/assessment-link/${token}/payment`)
-        return
-      }
+    // If payment is required, redirect to payment page
+    if (linkData && linkData.linkType === 'paid' && linkData.price > 0) {
+      navigate(`/assessment-link/${token}/payment`)
+      return
+    }
 
       // Start attempt
-      const storedPerspective = localStorage.getItem(`groupPerspective_${token}`)
-      const perspective = storedPerspective || null
+    const storedPerspective = localStorage.getItem(`groupPerspective_${token}`)
+    const perspective = storedPerspective || null
 
       const attemptResponse = await startLinkAttempt(token, participantInfo, perspective)
       
@@ -214,13 +214,11 @@ const AssessmentViaLinkPage2 = () => {
 
     try {
       setLoading(true)
-
+      
       // Prepare participant info with subjectId
+      // For Parent/Teacher, only name and subjectId are needed
       const participantInfo = {
         name: participantFormData.fullName.trim(),
-        email: participantFormData.email || '',
-        dateOfBirth: participantFormData.dateOfBirth || '',
-        gender: participantFormData.gender || '',
         subjectId: participantFormData.selectedStudentId
       }
 
@@ -284,7 +282,7 @@ const AssessmentViaLinkPage2 = () => {
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-800 mb-8">
             {isStudentRole ? 'Create Student Profile' : 'Before You Begin'}
           </h1>
-
+          
           {/* Student Role Form */}
           {isStudentRole ? (
             <>
@@ -332,20 +330,20 @@ const AssessmentViaLinkPage2 = () => {
                 />
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
                   Class / Grade <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
+            </label>
+            <input
+              type="text"
                   name="classGrade"
                   value={studentFormData.classGrade}
                   onChange={handleStudentFormChange}
                   placeholder="e.g., Grade 5, Class 10"
-                  className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                   required
-                />
-              </div>
+            />
+          </div>
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -365,18 +363,18 @@ const AssessmentViaLinkPage2 = () => {
             /* Parent/Teacher Role Form */
             <>
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                   {selectedPerspective === 'Parent' ? 'Parent Name' : selectedPerspective === 'Teacher' ? 'Teacher Name' : 'Full Name'} <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
+              </label>
+              <input
+                type="text"
                   name="fullName"
                   value={participantFormData.fullName}
                   onChange={handleParticipantFormChange}
                   placeholder={`Enter ${selectedPerspective?.toLowerCase() || 'your'} name`}
-                  className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                />
+                className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+              />
               </div>
 
               {/* Student Selection */}
@@ -412,59 +410,9 @@ const AssessmentViaLinkPage2 = () => {
                       ))}
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
-                )}
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={participantFormData.email}
-                  onChange={handleParticipantFormChange}
-                  placeholder="Enter your email"
-                  className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:space-x-4 mb-6">
-                <div className="flex-1 mb-4 sm:mb-0">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth
-                  </label>
-                  <DatePicker
-                    value={participantFormData.dateOfBirth}
-                    onChange={handleParticipantFormChange}
-                    max={new Date().toISOString().split('T')[0]}
-                    placeholder="Select date of birth"
-                    className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                    name="dateOfBirth"
-                  />
                 </div>
-                
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Gender
-                  </label>
-                  <div className="relative">
-                    <select
-                      name="gender"
-                      value={participantFormData.gender}
-                      onChange={handleParticipantFormChange}
-                      className="w-full px-4 py-3 pr-10 bg-gray-200 border-0 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
-                    >
-                      <option value="">Select</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="other">Other</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                  </div>
-                </div>
-              </div>
+              )}
+            </div>
             </>
           )}
 

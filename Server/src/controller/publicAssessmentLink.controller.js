@@ -3,6 +3,7 @@ const { ok, created } = require("../utils/Response");
 const { AssessmentLink } = require("../model/AssessmentLink");
 const { GroupAssessmentLink } = require("../model/GroupAssessmentLink");
 const { GroupAssessment } = require("../model/GroupAssessment");
+const { StudentProfile } = require("../model/StudentProfile");
 const { Test } = require("../model/Test");
 const { TestAttempt } = require("../model/TestAttempt");
 const { Result } = require("../model/Result");
@@ -567,18 +568,33 @@ exports.submit = asyncHandler(async (req, res) => {
   const { token, attemptId } = req.params;
   const { answers: submittedAnswers } = req.body;
 
+  console.log(`[SUBMIT] Submit request - Token: ${token}, AttemptId: ${attemptId}`);
+  console.log(`[SUBMIT] Request body:`, { hasAnswers: !!submittedAnswers });
+
   // Find attempt and verify it belongs to this link token
   const attempt = await TestAttempt.findById(attemptId);
   if (!attempt) {
+    console.log(`[SUBMIT] ERROR: Attempt not found - ID: ${attemptId}`);
     return res.status(404).json({ success: false, message: "Attempt not found" });
   }
 
+  console.log(`[SUBMIT] Attempt found - Status: ${attempt.status}, LinkToken: ${attempt.linkToken}, TestId: ${attempt.testId}`);
+
   // Verify link token matches
   if (attempt.linkToken !== token) {
+    console.log(`[SUBMIT] ERROR: Link token mismatch - Attempt token: ${attempt.linkToken}, Request token: ${token}`);
     return res.status(403).json({ success: false, message: "Forbidden" });
   }
 
   if (attempt.status !== "in_progress") {
+    console.log(`[SUBMIT] ERROR: Attempt status is "${attempt.status}", expected "in_progress"`);
+    console.log(`[SUBMIT] Attempt details:`, {
+      _id: attempt._id,
+      status: attempt.status,
+      submittedAt: attempt.submittedAt,
+      startedAt: attempt.startedAt,
+      participantInfo: attempt.participantInfo
+    });
     return res.status(400).json({ 
       success: false, 
       message: `Attempt is already ${attempt.status}` 
@@ -695,82 +711,83 @@ exports.submit = asyncHandler(async (req, res) => {
     }
     
     if (groupLink && perspective) {
-      // Extract student name from participantInfo
-      // For Student role: use their own name
-      // For Parent/Teacher role: MUST use studentName field (never use their own name)
-      let studentName = null;
-      if (attempt.participantInfo) {
-        if (perspective && perspective.toLowerCase() === 'student') {
-          // Student uses their own name
-          studentName = attempt.participantInfo.name || attempt.participantInfo.studentName;
-          console.log(`[SUBMIT] Student perspective - using name: ${studentName}`); // Debug log
-        } else {
-          // For Parent/Teacher, MUST use studentName field - this is the student they're reporting for
-          // Never fall back to their own name, as that would create separate groups
-          studentName = attempt.participantInfo.studentName;
-          if (!studentName) {
-            console.log(`[SUBMIT] ERROR: studentName is required for ${perspective} perspective!`); // Debug log
+      // NEW FLOW: Use subjectId (StudentProfile) instead of name matching
+      let subjectId = null;
+      const isStudentRole = perspective.toLowerCase() === 'student';
+      
             console.log(`[SUBMIT] ParticipantInfo:`, attempt.participantInfo); // Debug log
+      console.log(`[SUBMIT] Perspective: ${perspective}, isStudentRole: ${isStudentRole}`); // Debug log
+      
+      if (isStudentRole) {
+        // Student role: Check if subjectId exists in participantInfo (should be set when profile was created)
+        if (attempt.participantInfo && attempt.participantInfo.subjectId) {
+          subjectId = attempt.participantInfo.subjectId;
+          console.log(`[SUBMIT] Student role - using subjectId from participantInfo: ${subjectId}`); // Debug log
+        } else {
+          console.log(`[SUBMIT] ERROR: Student profile ID (subjectId) is missing for student role!`); // Debug log
             return res.status(400).json({ 
               success: false, 
-              message: `Student name is required for ${perspective} perspective. Please provide the student's name.` 
-            });
-          }
-          console.log(`[SUBMIT] ${perspective} perspective - using studentName: ${studentName}`); // Debug log
+            message: "Student profile is required. Please create your student profile first." 
+          });
+        }
+      } else {
+        // Parent/Teacher role: MUST have subjectId selected
+        if (attempt.participantInfo && attempt.participantInfo.subjectId) {
+          subjectId = attempt.participantInfo.subjectId;
+          console.log(`[SUBMIT] ${perspective} role - using subjectId: ${subjectId}`); // Debug log
+        } else {
+          console.log(`[SUBMIT] ERROR: Student profile ID (subjectId) is required for ${perspective} role!`); // Debug log
+          return res.status(400).json({ 
+            success: false, 
+            message: `Please select a student profile to continue. Student must complete the assessment first.` 
+          });
         }
       }
 
-      console.log(`[SUBMIT] ParticipantInfo:`, attempt.participantInfo); // Debug log
-      console.log(`[SUBMIT] Perspective: ${perspective}, Extracted studentName: ${studentName}`); // Debug log
-      
-      if (!studentName) {
-        console.log(`[SUBMIT] ERROR: Student name is missing!`); // Debug log
+      if (!subjectId) {
+        console.log(`[SUBMIT] ERROR: subjectId is missing!`); // Debug log
         return res.status(400).json({ 
           success: false, 
-          message: "Student name is required for group assessment" 
+          message: "Student profile is required for group assessment" 
         });
       }
 
-      // Normalize student name
-      const normalizedStudentName = normalizeName(studentName);
-
-      // Find existing group assessments for this link
-      const existingGroupAssessments = await GroupAssessment.find({
-        groupAssessmentLinkId: groupLink._id,
-        linkToken: token
-      }).select('normalizedStudentName groupName');
-
-      // Use fuzzy matching to find best match
-      let matchedGroupAssessment = null;
-      console.log(`[SUBMIT] Found ${existingGroupAssessments.length} existing group assessments for this link`); // Debug log
-      
-      if (existingGroupAssessments.length > 0) {
-        const existingNames = existingGroupAssessments
-          .map(ga => ga.normalizedStudentName)
-          .filter(name => name !== null);
-
-        console.log(`[SUBMIT] Existing normalized names:`, existingNames); // Debug log
-        const bestMatch = findBestMatch(normalizedStudentName, existingNames, 85);
-        console.log(`[SUBMIT] Best match result:`, bestMatch); // Debug log
-        
-        if (bestMatch) {
-          // Find the group assessment with the matched name
-          matchedGroupAssessment = await GroupAssessment.findOne({
-            groupAssessmentLinkId: groupLink._id,
-            linkToken: token,
-            normalizedStudentName: bestMatch.name
-          });
-          console.log(`[SUBMIT] Found matched group assessment: ${matchedGroupAssessment ? matchedGroupAssessment._id : 'NONE'}`); // Debug log
-        }
+      // Verify student profile exists
+      const studentProfile = await StudentProfile.findById(subjectId);
+      if (!studentProfile) {
+        console.log(`[SUBMIT] ERROR: Student profile not found: ${subjectId}`); // Debug log
+        return res.status(404).json({ 
+          success: false, 
+          message: "Student profile not found" 
+        });
       }
 
-      // Create new group assessment if no match found
+      // Verify student profile belongs to this link
+      if (studentProfile.linkToken !== token || 
+          studentProfile.groupAssessmentLinkId.toString() !== groupLink._id.toString()) {
+        console.log(`[SUBMIT] ERROR: Student profile does not belong to this link!`); // Debug log
+        return res.status(403).json({ 
+          success: false, 
+          message: "Student profile does not belong to this assessment link" 
+        });
+      }
+
+      // Find existing group assessment by subjectId
+      let matchedGroupAssessment = await GroupAssessment.findOne({
+            groupAssessmentLinkId: groupLink._id,
+            linkToken: token,
+        subjectId: subjectId
+          });
+
+      console.log(`[SUBMIT] Found existing group assessment: ${matchedGroupAssessment ? matchedGroupAssessment._id : 'NONE'}`); // Debug log
+
+      // Create new group assessment if not found
       if (!matchedGroupAssessment) {
-        console.log(`Creating new group assessment for student: ${studentName} (normalized: ${normalizedStudentName})`); // Debug log
+        console.log(`[SUBMIT] Creating new group assessment for subjectId: ${subjectId}`); // Debug log
         matchedGroupAssessment = await GroupAssessment.create({
           testId: groupLink.testId,
-          groupName: studentName, // Use actual student name as groupName
-          normalizedStudentName: normalizedStudentName,
+          groupName: studentProfile.name, // Use student profile name
+          subjectId: subjectId,
           createdBy: groupLink.createdBy,
           groupAssessmentLinkId: groupLink._id,
           linkToken: token,
@@ -782,16 +799,16 @@ exports.submit = asyncHandler(async (req, res) => {
           })),
           status: "pending"
         });
-        console.log(`Created group assessment: ${matchedGroupAssessment._id} with groupName: ${matchedGroupAssessment.groupName}`); // Debug log
+        console.log(`[SUBMIT] Created group assessment: ${matchedGroupAssessment._id} with subjectId: ${subjectId}`); // Debug log
       } else {
-        console.log(`Found existing group assessment: ${matchedGroupAssessment._id} for student: ${studentName}`); // Debug log
+        console.log(`[SUBMIT] Found existing group assessment: ${matchedGroupAssessment._id} for subjectId: ${subjectId}`); // Debug log
       }
 
       groupAssessmentId = matchedGroupAssessment._id;
       
       // Update perspective's participantInfo
       const perspectiveIndex = matchedGroupAssessment.perspectives.findIndex(p => 
-        p.perspectiveName === perspective
+        p.perspectiveName.toLowerCase() === perspective.toLowerCase()
       );
       
       if (perspectiveIndex !== -1 && attempt.participantInfo) {

@@ -1,4 +1,4 @@
-﻿const router = require("express").Router();
+const router = require("express").Router();
 const groupAssessmentLinkController = require("../controller/groupAssessmentLink.controller");
 const publicGroupAssessmentLinkController = require("../controller/publicGroupAssessmentLink.controller");
 
