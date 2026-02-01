@@ -178,6 +178,64 @@ export const updateGroupAssessmentLink = async (linkId, data) => {
 };
 
 /**
+ * Get results for a specific group assessment link (admin only)
+ * @param {string} linkId - Group assessment link ID
+ * @param {Object} params - Query parameters (page, limit, search)
+ * @returns {Promise} API response with results list
+ */
+export const getGroupLinkResults = async (linkId, params = {}) => {
+  const response = await axiosInstance.get(`/admin/group-assessment-links/${linkId}/results`, { params });
+  return response.data;
+};
+
+/**
+ * Get detailed information for a specific group assessment (admin only)
+ * @param {string} linkId - Group assessment link ID
+ * @param {string} groupId - Group assessment ID
+ * @returns {Promise} API response with group assessment details
+ */
+export const getGroupAssessmentDetails = async (linkId, groupId) => {
+  const response = await axiosInstance.get(`/admin/group-assessment-links/${linkId}/group-assessments/${groupId}`);
+  return response.data;
+};
+
+/**
+ * Download PDF for a group assessment (admin only)
+ * @param {string} linkId - Group assessment link ID
+ * @param {string} groupId - Group assessment ID
+ * @returns {Promise} Blob response for PDF download
+ */
+export const downloadGroupAssessmentPDF = async (linkId, groupId) => {
+  const response = await axiosInstance.get(`/admin/group-assessment-links/${linkId}/group-assessments/${groupId}/pdf`, {
+    responseType: 'blob'
+  });
+  
+  // Create blob URL and trigger download
+  const blob = new Blob([response.data], { type: 'application/pdf' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  
+  // Extract filename from Content-Disposition header if available
+  const contentDisposition = response.headers['content-disposition'];
+  let filename = `group-assessment-${groupId}.pdf`;
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+    if (filenameMatch) {
+      filename = filenameMatch[1];
+    }
+  }
+  
+  link.setAttribute('download', filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+  
+  return { success: true, message: 'Report downloaded successfully' };
+};
+
+/**
  * Delete group assessment link (admin only)
  * @param {string} linkId - Link ID
  * @returns {Promise} API response

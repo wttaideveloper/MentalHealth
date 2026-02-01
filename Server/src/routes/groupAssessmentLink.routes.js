@@ -36,6 +36,30 @@ router.put(
   groupAssessmentLinkController.update
 );
 
+router.get(
+  "/:linkId/results",
+  authMiddleware,
+  requireRole("admin"),
+  consentGateMiddleware,
+  groupAssessmentLinkController.getLinkResults
+);
+
+router.get(
+  "/:linkId/group-assessments/:groupId",
+  authMiddleware,
+  requireRole("admin"),
+  consentGateMiddleware,
+  groupAssessmentLinkController.getGroupAssessmentDetails
+);
+
+router.get(
+  "/:linkId/group-assessments/:groupId/pdf",
+  authMiddleware,
+  requireRole("admin"),
+  consentGateMiddleware,
+  groupAssessmentLinkController.downloadGroupAssessmentPDF
+);
+
 router.delete(
   "/:linkId",
   authMiddleware,

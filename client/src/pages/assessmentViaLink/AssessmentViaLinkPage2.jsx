@@ -286,35 +286,35 @@ const AssessmentViaLinkPage2 = () => {
           {/* Student Role Form */}
           {isStudentRole ? (
             <>
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
                   Student Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
+            </label>
+            <input
+              type="text"
                   name="name"
                   value={studentFormData.name}
                   onChange={handleStudentFormChange}
                   placeholder="Enter student name"
-                  className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                   required
-                />
-              </div>
+            />
+          </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                   Parent Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
+              </label>
+              <input
+                type="text"
                   name="parentName"
                   value={studentFormData.parentName}
                   onChange={handleStudentFormChange}
                   placeholder="Enter parent name"
-                  className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                />
-              </div>
+                className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+              />
+                </div>
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -328,7 +328,7 @@ const AssessmentViaLinkPage2 = () => {
                   className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                   name="dateOfBirth"
                 />
-              </div>
+            </div>
 
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -375,13 +375,13 @@ const AssessmentViaLinkPage2 = () => {
                 className="w-full px-4 py-3 bg-gray-200 border-0 rounded-lg text-gray-700 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
               />
-              </div>
-
+            </div>
+            
               {/* Student Selection */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Student <span className="text-red-500">*</span>
-                </label>
+              </label>
                 {loadingStudents ? (
                   <div className="w-full px-4 py-3 bg-gray-200 rounded-lg text-gray-500">
                     Loading students...
@@ -394,23 +394,23 @@ const AssessmentViaLinkPage2 = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="relative">
-                    <select
+              <div className="relative">
+                <select
                       name="selectedStudentId"
                       value={participantFormData.selectedStudentId}
                       onChange={handleParticipantFormChange}
-                      className="w-full px-4 py-3 pr-10 bg-gray-200 border-0 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
+                  className="w-full px-4 py-3 pr-10 bg-gray-200 border-0 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none"
                       required
-                    >
+                >
                       <option value="">Select a student</option>
                       {students.map((student) => (
                         <option key={student._id} value={student._id}>
                           {student.name} {student.classGrade ? `- ${student.classGrade}` : ''} {student.school ? `(${student.school})` : ''}
                         </option>
                       ))}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-                </div>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              </div>
               )}
             </div>
             </>
