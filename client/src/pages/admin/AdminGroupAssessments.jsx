@@ -30,6 +30,8 @@ function AdminGroupAssessments() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupAssessment, setSelectedGroupAssessment] = useState(null);
   const [showGroupDetailsModal, setShowGroupDetailsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [linkToDelete, setLinkToDelete] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -160,14 +162,19 @@ function AdminGroupAssessments() {
     });
   };
 
-  const handleDelete = async (linkId) => {
-    if (!window.confirm('Are you sure you want to delete this group assessment link?')) {
-      return;
-    }
+  const handleDeleteClick = (linkId) => {
+    setLinkToDelete(linkId);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!linkToDelete) return;
 
     try {
-      await deleteGroupAssessmentLink(linkId);
+      await deleteGroupAssessmentLink(linkToDelete);
       showToast.success('Group assessment link deleted successfully');
+      setShowDeleteModal(false);
+      setLinkToDelete(null);
       fetchData();
     } catch (err) {
       console.error('Error deleting group link:', err);
@@ -175,13 +182,56 @@ function AdminGroupAssessments() {
     }
   };
 
-  const handleCopyLink = (token) => {
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
+    setLinkToDelete(null);
+  };
+
+  // Copy to clipboard with fallback for non-HTTPS environments
+  const copyToClipboard = async (text) => {
+    // Try modern Clipboard API first (requires HTTPS or localhost)
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        console.warn('Clipboard API failed, trying fallback:', err);
+      }
+    }
+    
+    // Fallback: Use document.execCommand (works in HTTP and HTTPS)
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        return true;
+      } else {
+        throw new Error('execCommand copy failed');
+      }
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      return false;
+    }
+  };
+
+  const handleCopyLink = async (token) => {
     const fullLink = `${window.location.origin}/group-assessment-link/${token}/select-role`;
-    navigator.clipboard.writeText(fullLink).then(() => {
+    const success = await copyToClipboard(fullLink);
+    if (success) {
       showToast.success('Link copied to clipboard!');
-    }).catch(() => {
-      showToast.error('Failed to copy link');
-    });
+    } else {
+      showToast.error('Failed to copy link. Please copy manually.');
+    }
   };
 
   const getStatusBadgeClass = (isActive) => {
@@ -401,7 +451,7 @@ function AdminGroupAssessments() {
                           Copy Link
                         </button>
                         <button
-                          onClick={() => handleDelete(link._id)}
+                          onClick={() => handleDeleteClick(link._id)}
                           className="text-red-600 hover:text-red-800"
                         >
                           Delete
@@ -1112,6 +1162,41 @@ function AdminGroupAssessments() {
           </div>
         );
       })()}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 text-center mb-2">
+                Delete Group Assessment Link
+              </h2>
+              <p className="text-gray-600 text-center mb-6">
+                Are you sure you want to delete this group assessment link? This action cannot be undone and all associated data will be permanently removed.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteCancel}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

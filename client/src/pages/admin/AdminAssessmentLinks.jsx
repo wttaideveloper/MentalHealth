@@ -236,14 +236,52 @@ function AdminAssessmentLinks() {
     });
   };
 
-  const handleCopyLink = (token) => {
+  // Copy to clipboard with fallback for non-HTTPS environments
+  const copyToClipboard = async (text) => {
+    // Try modern Clipboard API first (requires HTTPS or localhost)
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        console.warn('Clipboard API failed, trying fallback:', err);
+      }
+    }
+    
+    // Fallback: Use document.execCommand (works in HTTP and HTTPS)
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        return true;
+      } else {
+        throw new Error('execCommand copy failed');
+      }
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      return false;
+    }
+  };
+
+  const handleCopyLink = async (token) => {
     const baseUrl = window.location.origin;
     const fullLink = `${baseUrl}/assessment-link/${token}`;
-    navigator.clipboard.writeText(fullLink).then(() => {
+    const success = await copyToClipboard(fullLink);
+    if (success) {
       showToast.success('Link copied to clipboard!');
-    }).catch(() => {
-      showToast.error('Failed to copy link');
-    });
+    } else {
+      showToast.error('Failed to copy link. Please copy manually.');
+    }
   };
 
   const handleViewResults = async (link) => {
@@ -1433,13 +1471,14 @@ function AdminAssessmentLinks() {
                       <p className="text-xs sm:text-sm font-mono break-all">{window.location.origin}/group-assessment-link/{createdLink.linkToken}/select-role</p>
                     </div>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         const fullLink = `${window.location.origin}/group-assessment-link/${createdLink.linkToken}/select-role`;
-                        navigator.clipboard.writeText(fullLink).then(() => {
+                        const success = await copyToClipboard(fullLink);
+                        if (success) {
                           showToast.success('Link copied to clipboard!');
-                        }).catch(() => {
-                          showToast.error('Failed to copy link');
-                        });
+                        } else {
+                          showToast.error('Failed to copy link. Please copy manually.');
+                        }
                       }}
                       className="w-full px-4 py-2 bg-mh-gradient text-white rounded-lg font-medium hover:opacity-90 text-sm sm:text-base"
                     >
@@ -2585,9 +2624,14 @@ function AdminAssessmentLinks() {
                       </label>
                       <button
                         type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/assessment-link/${selectedLinkForEmail.linkToken}`);
-                          showToast.success('Link copied to clipboard!');
+                        onClick={async () => {
+                          const fullLink = `${window.location.origin}/assessment-link/${selectedLinkForEmail.linkToken}`;
+                          const success = await copyToClipboard(fullLink);
+                          if (success) {
+                            showToast.success('Link copied to clipboard!');
+                          } else {
+                            showToast.error('Failed to copy link. Please copy manually.');
+                          }
                         }}
                         className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-1 w-full sm:w-auto"
                       >
