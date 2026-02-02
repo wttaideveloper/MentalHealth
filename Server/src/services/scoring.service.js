@@ -23,7 +23,8 @@ function safeNumber(v) {
  *   "categories": {
  *     "Depression": {
  *       "items": ["q1","q2"],
- *       "bands": [{"min":0,"max":9,"label":"Normal"},{"min":10,"max":13,"label":"Mild"}]
+ *       "multiplier": 2,
+ *       "bands": [{"min":0,"max":18,"label":"Normal"},{"min":20,"max":26,"label":"Mild"}]
  *     }
  *   }
  * }
@@ -82,8 +83,8 @@ function computeScore(scoringRules, answersObj) {
       const categoryConfig = rules.categories[categoryName];
       const categoryItems = Array.isArray(categoryConfig.items) ? categoryConfig.items : [];
       
-      // Calculate category score
-      let categoryScore = 0;
+      // Calculate raw category score (sum of answer values)
+      let rawCategoryScore = 0;
       let categoryAnsweredCount = 0;
       for (const itemId of categoryItems) {
         const answerValue = answers[itemId];
@@ -91,10 +92,14 @@ function computeScore(scoringRules, answersObj) {
         if (answerValue !== null && answerValue !== undefined && answerValue !== "") {
           categoryAnsweredCount++;
         }
-        categoryScore += safeNumber(answerValue);
+        rawCategoryScore += safeNumber(answerValue);
       }
       
-      // Find band for category score
+      // Apply multiplier to category score (default to 1 if not specified)
+      const multiplier = safeNumber(categoryConfig.multiplier) || 1;
+      const categoryScore = rawCategoryScore * multiplier;
+      
+      // Find band for category score (bands should account for multiplied score)
       let categoryBand = "";
       let categoryBandDescription = "";
       const categoryBands = Array.isArray(categoryConfig.bands) ? categoryConfig.bands : [];
@@ -113,6 +118,8 @@ function computeScore(scoringRules, answersObj) {
       
       categoryResults[categoryName] = {
         score: categoryScore,
+        rawScore: rawCategoryScore,
+        multiplier: multiplier,
         band: categoryBand,
         bandDescription: categoryBandDescription,
         items: categoryItems,

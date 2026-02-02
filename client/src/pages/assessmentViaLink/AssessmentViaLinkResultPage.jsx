@@ -281,14 +281,17 @@ function AssessmentViaLinkResultPage() {
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <button
-          onClick={() => navigate('/')}
-          className="px-6 py-3 bg-mh-gradient text-white rounded-full font-medium hover:opacity-90 transition"
-        >
-          Return to Home
-        </button>
+      {/* Thank You Message */}
+      <div className="bg-gradient-to-br from-mh-green to-green-600 rounded-xl shadow-lg p-8 sm:p-10 text-center">
+        <div className="mb-4">
+          <svg className="w-16 h-16 mx-auto text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Thank You!</h2>
+        <p className="text-green-50 text-lg leading-relaxed max-w-2xl mx-auto">
+          We appreciate you taking the time to complete this assessment. Your responses have been recorded and will be reviewed by the assessment administrator.
+        </p>
       </div>
     </div>
   );

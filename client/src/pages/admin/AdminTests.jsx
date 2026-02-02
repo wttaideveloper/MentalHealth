@@ -88,7 +88,7 @@ function AdminAssessments() {
     weights: {}, // Object: { q1: 2, q2: 1.5 }
     bands: [], // Array: [{ min: 0, max: 10, label: 'Low' }]
     subscales: {}, // Object: { 'Anxiety': ['q1', 'q2'] }
-    categories: {} // Object: { 'Depression': { items: ['q1', 'q2'], bands: [{ min, max, label, description }] } }
+    categories: {} // Object: { 'Depression': { items: ['q1', 'q2'], multiplier: 1, bands: [{ min, max, label, description }] } }
   });
 
   // Risk Rules UI State
@@ -567,6 +567,7 @@ function AdminAssessments() {
       for (const [categoryName, categoryData] of Object.entries(uiState.categories)) {
         backend.categories[categoryName] = {
           items: Array.isArray(categoryData.items) ? categoryData.items : [],
+          multiplier: Number(categoryData.multiplier) || 1,
           bands: Array.isArray(categoryData.bands) ? categoryData.bands.map(band => ({
             min: Number(band.min),
             max: Number(band.max),
@@ -636,6 +637,7 @@ function AdminAssessments() {
       for (const [categoryName, categoryData] of Object.entries(backendRules.categories)) {
         categories[categoryName] = {
           items: Array.isArray(categoryData.items) ? categoryData.items : [],
+          multiplier: Number(categoryData.multiplier) || 1,
           bands: Array.isArray(categoryData.bands) ? categoryData.bands.map(band => ({
             min: band.min || 0,
             max: band.max || 0,
@@ -2804,6 +2806,7 @@ function AdminAssessments() {
                                           ...scoringRulesState.categories,
                                           [categoryName]: {
                                             items: [],
+                                            multiplier: 1,
                                             bands: []
                                           }
                                         }
@@ -2923,6 +2926,62 @@ function AdminAssessments() {
                                     <p className="text-xs text-gray-500">Add questions first in the Questions section</p>
                                   )}
                                 </div>
+                              </div>
+
+                              {/* Category Multiplier */}
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-2">
+                                  Category Score Multiplier
+                                  <span className="text-gray-500 font-normal ml-1">(e.g., 2 for DASS-21)</span>
+                                </label>
+                                <div className="flex items-center gap-3">
+                                  <select
+                                    value={categoryData.multiplier || 1}
+                                    onChange={(e) => {
+                                      setScoringRulesState({
+                                        ...scoringRulesState,
+                                        categories: {
+                                          ...scoringRulesState.categories,
+                                          [categoryName]: {
+                                            ...categoryData,
+                                            multiplier: Number(e.target.value) || 1
+                                          }
+                                        }
+                                      });
+                                    }}
+                                    className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                  >
+                                    <option value={1}>×1 (No multiplier)</option>
+                                    <option value={2}>×2</option>
+                                    <option value={3}>×3</option>
+                                    <option value={4}>×4</option>
+                                    <option value={5}>×5</option>
+                                  </select>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={categoryData.multiplier || 1}
+                                    onChange={(e) => {
+                                      const multiplier = Math.max(1, Math.min(10, Number(e.target.value) || 1));
+                                      setScoringRulesState({
+                                        ...scoringRulesState,
+                                        categories: {
+                                          ...scoringRulesState.categories,
+                                          [categoryName]: {
+                                            ...categoryData,
+                                            multiplier: multiplier
+                                          }
+                                        }
+                                      });
+                                    }}
+                                    placeholder="Custom (1-10)"
+                                    className="px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-32"
+                                  />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  Category total score will be multiplied by this value. Make sure your severity bands account for the multiplied score range.
+                                </p>
                               </div>
 
                               {/* Category Bands */}
